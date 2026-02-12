@@ -6,11 +6,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Dimensions,
 } from "react-native";
 import {
   useDashboardResumo,
   useDashboardCategorias,
   useDashboardVencimentos,
+  useDashboardEvolucao,
 } from "@hooks/useDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -21,7 +23,11 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  BarChart3,
 } from "lucide-react-native";
+import { BarChart } from "react-native-chart-kit";
+
+const screenWidth = Dimensions.get("window").width - 40;
 
 const MESES = [
   "Jan",
@@ -47,6 +53,7 @@ export default function DashboardScreen() {
   const { data: resumo, isLoading, refetch } = useDashboardResumo(mes, ano);
   const { data: categorias } = useDashboardCategorias(mes, ano);
   const { data: vencimentos } = useDashboardVencimentos(7);
+  const { data: evolucao } = useDashboardEvolucao(6);
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = async () => {
@@ -161,26 +168,113 @@ export default function DashboardScreen() {
           </Text>
         </View>
 
-        {categorias && categorias.length > 0 && (
+        {evolucao && evolucao.length > 0 && (
           <View className="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-6">
-            <Text className="text-white font-bold text-base mb-4">
-              Gastos por Categoria
-            </Text>
-            {categorias.map((cat: any, index: number) => (
-              <View
-                key={index}
-                className="flex-row justify-between items-center mb-3"
-              >
-                <Text className="text-slate-300 text-sm flex-1">
-                  {cat.categoria}
-                </Text>
-                <Text className="text-slate-400 text-sm">
-                  {formatCurrency(cat.total)}
-                </Text>
+            <View className="flex-row items-center gap-2 mb-4">
+              <BarChart3 color="#a3e635" size={18} />
+              <Text className="text-white font-bold text-base">
+                Evolucao Mensal
+              </Text>
+            </View>
+            <BarChart
+              data={{
+                labels: evolucao.map((e: any) => e.mes || ""),
+                datasets: [
+                  {
+                    data: evolucao.map((e: any) => e.receitas || 0),
+                    color: () => "#a3e635",
+                  },
+                  {
+                    data: evolucao.map((e: any) => e.despesas || 0),
+                    color: () => "#ef4444",
+                  },
+                ],
+              }}
+              width={screenWidth}
+              height={200}
+              yAxisLabel="R$"
+              yAxisSuffix=""
+              fromZero
+              showValuesOnTopOfBars={false}
+              chartConfig={{
+                backgroundColor: "#1a1d2e",
+                backgroundGradientFrom: "#1e293b",
+                backgroundGradientTo: "#1e293b",
+                decimalPlaces: 0,
+                color: (opacity = 1) => `rgba(163, 230, 53, ${opacity})`,
+                labelColor: () => "#94a3b8",
+                barPercentage: 0.5,
+                propsForBackgroundLines: {
+                  strokeDasharray: "",
+                  stroke: "#334155",
+                },
+              }}
+              style={{ borderRadius: 12 }}
+            />
+            <View className="flex-row justify-center gap-6 mt-3">
+              <View className="flex-row items-center gap-1">
+                <View className="w-3 h-3 rounded-sm bg-lime-400" />
+                <Text className="text-slate-400 text-xs">Receitas</Text>
               </View>
-            ))}
+              <View className="flex-row items-center gap-1">
+                <View className="w-3 h-3 rounded-sm bg-red-400" />
+                <Text className="text-slate-400 text-xs">Despesas</Text>
+              </View>
+            </View>
           </View>
         )}
+
+        {categorias &&
+          categorias.length > 0 &&
+          (() => {
+            const maxTotal = Math.max(
+              ...categorias.map((c: any) => c.total || 0),
+              1,
+            );
+            const COLORS = [
+              "#a3e635",
+              "#f59e0b",
+              "#ef4444",
+              "#3b82f6",
+              "#8b5cf6",
+              "#ec4899",
+              "#14b8a6",
+              "#f97316",
+              "#06b6d4",
+              "#6366f1",
+            ];
+            return (
+              <View className="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-6">
+                <Text className="text-white font-bold text-base mb-4">
+                  Gastos por Categoria
+                </Text>
+                {categorias.map((cat: any, index: number) => {
+                  const pct = ((cat.total || 0) / maxTotal) * 100;
+                  return (
+                    <View key={index} className="mb-3">
+                      <View className="flex-row justify-between items-center mb-1">
+                        <Text className="text-slate-300 text-sm flex-1">
+                          {cat.categoria}
+                        </Text>
+                        <Text className="text-slate-400 text-sm">
+                          {formatCurrency(cat.total)}
+                        </Text>
+                      </View>
+                      <View className="bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                        <View
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${pct}%`,
+                            backgroundColor: COLORS[index % COLORS.length],
+                          }}
+                        />
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            );
+          })()}
 
         {vencimentos && vencimentos.length > 0 && (
           <View className="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-6">
