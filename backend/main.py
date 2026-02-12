@@ -9,6 +9,10 @@ from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from database import engine, get_db, Base
 from models import Receita, Despesa, OrcamentoCategoria, Meta, User, Notification, SharedAccount
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 Base.metadata.create_all(bind=engine)
 import pandas as pd
@@ -26,7 +30,6 @@ from schemas import (
 )
 from passlib.context import CryptContext
 from jose import JWTError, jwt
-import os
 
 SECRET_KEY = os.environ.get("JWT_SECRET", "fincontrol-secret-key-change-in-production")
 ALGORITHM = "HS256"
@@ -314,6 +317,12 @@ def login(data: UserLogin, db: Session = Depends(get_db)):
 @app.get("/api/auth/me", response_model=UserResponse)
 def get_me(user: User = Depends(require_user)):
     return user
+
+
+@app.post("/api/auth/refresh", response_model=TokenResponse)
+def refresh_token(user: User = Depends(require_user), db: Session = Depends(get_db)):
+    token = create_access_token(user.id)
+    return TokenResponse(access_token=token, user=UserResponse.model_validate(user))
 
 
 # ==================== CATEGORIAS ====================
