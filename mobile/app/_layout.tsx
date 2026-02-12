@@ -1,34 +1,40 @@
 import React from "react";
 import { Stack } from "expo-router";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { StatusBar } from "react-native";
+import { queryClient, asyncStoragePersister } from "@/lib/queryClient";
+import { useSyncQueue } from "@/hooks/useSyncQueue";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 2,
-      staleTime: 1000 * 60 * 5,
-    },
-  },
-});
+function SyncManager({ children }: { children: React.ReactNode }) {
+  useSyncQueue();
+  return <>{children}</>;
+}
 
 export default function RootLayout() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister: asyncStoragePersister,
+        maxAge: 1000 * 60 * 60 * 24,
+      }}
+    >
       <AuthProvider>
-        <StatusBar barStyle="light-content" backgroundColor="#0b0d14" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: "#0b0d14" },
-            animation: "fade",
-          }}
-        >
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(app)" />
-        </Stack>
+        <SyncManager>
+          <StatusBar barStyle="light-content" backgroundColor="#0b0d14" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: "#0b0d14" },
+              animation: "fade",
+            }}
+          >
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(app)" />
+          </Stack>
+        </SyncManager>
       </AuthProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }
