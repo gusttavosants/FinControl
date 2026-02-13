@@ -1,4 +1,6 @@
-const API_BASE = "/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL
+  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
+  : "/api";
 
 async function fetchAPI(endpoint: string, options?: RequestInit) {
   const token =
