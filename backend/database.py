@@ -12,6 +12,9 @@ if not DATABASE_URL:
     DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "financial.db")
     DATABASE_URL = f"sqlite:///{DB_PATH}"
 
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 if DATABASE_URL.startswith("postgresql"):
     engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=10, max_overflow=20)
 else:
