@@ -19,19 +19,44 @@ export default function Modal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in">
       <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative bg-[#1a1d2e] rounded-2xl shadow-card w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto border border-[#2a2d3e]">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#2a2d3e]">
-          <h2 className="text-lg font-bold text-white">{title}</h2>
+      <div
+        className="relative w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto animate-scale-in"
+        style={{
+          background: "var(--bg-card)",
+          border: "1px solid var(--border-subtle)",
+          borderRadius: "var(--radius-card)",
+          boxShadow: "0 24px 80px rgba(0,0,0,0.15)",
+        }}
+      >
+        <div
+          className="flex items-center justify-between px-6 py-4"
+          style={{ borderBottom: "1px solid var(--border-subtle)" }}
+        >
+          <h2
+            className="text-lg font-bold"
+            style={{ color: "var(--text-primary)" }}
+          >
+            {title}
+          </h2>
           <button
             onClick={onClose}
-            className="p-1.5 hover:bg-[#242740] rounded-lg transition-colors"
+            className="p-1.5 rounded-lg transition-all duration-200"
+            style={{ color: "var(--text-muted)" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--bg-elevated)";
+              e.currentTarget.style.color = "var(--text-primary)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = "var(--text-muted)";
+            }}
           >
-            <X size={18} className="text-[#6b7280]" />
+            <X size={18} />
           </button>
         </div>
         <div className="p-6">{children}</div>

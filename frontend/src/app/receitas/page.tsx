@@ -116,16 +116,14 @@ export default function ReceitasPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Receitas</h1>
-          <p className="text-sm text-[#a1a7b8] mt-1">
-            Gerencie suas fontes de renda
-          </p>
+          <h1 className="page-title">Receitas</h1>
+          <p className="page-subtitle">Gerencie suas fontes de renda</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <MonthSelector
             mes={mes}
             ano={ano}
@@ -134,38 +132,51 @@ export default function ReceitasPage() {
               setAno(a);
             }}
           />
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-2 bg-[#a3e635] text-[#0b0d14] px-4 py-2 rounded-xl text-sm font-semibold hover:bg-[#84cc16] transition-colors"
-          >
-            <Plus size={16} />
+          <button onClick={openCreate} className="btn-primary">
+            <Plus size={15} />
             Nova Receita
           </button>
         </div>
       </div>
 
-      {/* Summary Card */}
-      <div className="bg-gradient-to-br from-emerald-500/20 to-teal-600/10 rounded-2xl p-6 border border-emerald-500/20">
-        <div className="flex items-center gap-3 mb-2">
-          <TrendingUp size={24} className="text-emerald-400" />
-          <span className="text-sm font-medium text-emerald-400">
-            Total de Receitas do Mês
-          </span>
+      {/* Summary */}
+      <div className="glass-card p-6">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ background: "rgba(23,179,100,0.12)" }}
+            >
+              <TrendingUp size={20} className="text-accent-500" />
+            </div>
+            <div>
+              <p
+                className="text-sm font-medium"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Total de Receitas do Mês
+              </p>
+              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                {receitas.length} lançamentos
+              </p>
+            </div>
+          </div>
+          <span className="badge badge-success">Atualizado</span>
         </div>
-        <p className="text-3xl font-bold text-white">
+        <p
+          className="text-3xl font-extrabold tracking-tight"
+          style={{ color: "var(--text-primary)" }}
+        >
           {formatCurrency(totalReceitas)}
-        </p>
-        <p className="text-sm text-[#6b7280] mt-1">
-          {receitas.length} lançamentos
         </p>
       </div>
 
-      {/* Filtro por Categoria */}
-      <div className="flex gap-2 flex-wrap">
+      {/* Filtro */}
+      <div className="flex gap-3 flex-wrap">
         <select
           value={categoriaFiltro}
           onChange={(e) => setCategoriaFiltro(e.target.value)}
-          className="px-4 py-2 rounded-xl text-sm font-medium bg-[#1a1d2e] text-[#a1a7b8] border border-[#2a2d3e] hover:bg-[#1f2237] focus:outline-none focus:ring-2 focus:ring-[#a3e635]/30 focus:border-[#a3e635]"
+          className="input-field w-auto min-w-[220px]"
         >
           <option value="todas">Todas as Categorias</option>
           {categorias.map((cat) => (
@@ -177,18 +188,25 @@ export default function ReceitasPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-[#1a1d2e] rounded-2xl border border-[#2a2d3e] overflow-hidden">
+      <div className="glass-card overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-48">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#a3e635]" />
+            <div
+              className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin"
+              style={{
+                borderColor: "var(--brand)",
+                borderTopColor: "transparent",
+              }}
+            />
           </div>
         ) : filteredReceitas.length === 0 ? (
-          <div className="text-center py-16">
-            <TrendingUp size={48} className="mx-auto text-[#6b7280] mb-4" />
-            <p className="text-[#a1a7b8] font-medium">
-              Nenhuma receita encontrada
-            </p>
-            <p className="text-sm text-[#6b7280] mt-1">
+          <div
+            className="text-center py-16"
+            style={{ color: "var(--text-muted)" }}
+          >
+            <TrendingUp size={48} className="mx-auto mb-4 opacity-30" />
+            <p className="font-semibold">Nenhuma receita encontrada</p>
+            <p className="text-sm mt-1">
               Clique em "Nova Receita" para adicionar
             </p>
           </div>
@@ -196,20 +214,35 @@ export default function ReceitasPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th
+                    className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     Descrição
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">
+                  <th
+                    className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     Categoria
                   </th>
-                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase">
+                  <th
+                    className="text-right py-3 px-4 text-xs font-bold uppercase tracking-wider"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     Valor
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">
+                  <th
+                    className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     Data
                   </th>
-                  <th className="text-center py-3 px-4 text-xs font-semibold text-slate-400 uppercase">
+                  <th
+                    className="text-center py-3 px-4 text-xs font-bold uppercase tracking-wider"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     Ações
                   </th>
                 </tr>
@@ -218,35 +251,53 @@ export default function ReceitasPage() {
                 {filteredReceitas.map((r) => (
                   <tr
                     key={r.id}
-                    className="border-b border-slate-50 hover:bg-slate-50 transition-colors"
+                    className="transition-colors"
+                    style={{ borderBottom: "1px solid var(--border-subtle)" }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background =
+                        "var(--bg-card-hover)")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = "transparent")
+                    }
                   >
-                    <td className="py-3 px-4 text-sm font-medium text-slate-700">
+                    <td
+                      className="py-3.5 px-4 text-sm font-semibold"
+                      style={{ color: "var(--text-primary)" }}
+                    >
                       {r.descricao}
                     </td>
-                    <td className="py-3 px-4">
-                      <span className="text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full font-medium">
+                    <td className="py-3.5 px-4">
+                      <span className="badge badge-success text-xs">
                         {r.categoria}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-sm font-semibold text-emerald-600 text-right">
+                    <td
+                      className="py-3.5 px-4 text-sm font-bold text-right"
+                      style={{ color: "var(--text-primary)" }}
+                    >
                       {formatCurrency(r.valor)}
                     </td>
-                    <td className="py-3 px-4 text-sm text-slate-600">
+                    <td
+                      className="py-3.5 px-4 text-sm"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
                       {formatDate(r.data)}
                     </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center justify-center gap-1">
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => openEdit(r)}
-                          className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
+                          className="btn-ghost px-2 py-1"
                         >
-                          <Pencil size={14} className="text-slate-400" />
+                          <Pencil size={14} />
                         </button>
                         <button
                           onClick={() => handleDelete(r.id)}
-                          className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                          className="btn-ghost px-2 py-1"
+                          style={{ color: "#f93a4a" }}
                         >
-                          <Trash2 size={14} className="text-red-400" />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </td>

@@ -42,8 +42,8 @@ export default function NotificationCenter() {
   const markAsRead = async (id: number) => {
     try {
       await notificationsAPI.marcarLida(id);
-      setNotifications(prev =>
-        prev.map(n => n.id === id ? { ...n, lida: true } : n)
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, lida: true } : n)),
       );
     } catch (error) {
       console.error("Erro ao marcar como lida:", error);
@@ -53,7 +53,7 @@ export default function NotificationCenter() {
   const deleteNotification = async (id: number) => {
     try {
       await notificationsAPI.deletar(id);
-      setNotifications(prev => prev.filter(n => n.id !== id));
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
     } catch (error) {
       console.error("Erro ao deletar notificação:", error);
     }
@@ -66,18 +66,26 @@ export default function NotificationCenter() {
     return () => clearInterval(interval);
   }, []);
 
-  const unreadCount = notifications.filter(n => !n.lida).length;
+  const unreadCount = notifications.filter((n) => !n.lida).length;
 
   return (
     <div className="relative">
       {/* Bell Icon */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-lg hover:bg-slate-100 transition-colors"
+        className="relative p-2 rounded-xl transition-colors"
+        style={{
+          background: "var(--bg-card)",
+          border: "1px solid var(--border-subtle)",
+          color: "var(--text-secondary)",
+        }}
       >
-        <Bell size={20} className="text-slate-600" />
+        <Bell size={18} style={{ color: "var(--text-secondary)" }} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+          <span
+            className="absolute -top-1 -right-1 text-white text-[10px] rounded-full h-5 w-5 flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg, #f93a4a, #dd5f02)" }}
+          >
             {unreadCount}
           </span>
         )}
@@ -85,14 +93,31 @@ export default function NotificationCenter() {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl border border-slate-200 shadow-lg z-50">
-          <div className="p-4 border-b border-slate-100">
+        <div
+          className="absolute right-0 mt-2 w-80 z-50 overflow-hidden"
+          style={{
+            background: "var(--bg-card)",
+            border: "1px solid var(--border-subtle)",
+            borderRadius: "var(--radius-card)",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.18)",
+          }}
+        >
+          <div
+            className="p-4"
+            style={{ borderBottom: "1px solid var(--border-subtle)" }}
+          >
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-slate-800">Notificações</h3>
+              <h3
+                className="font-semibold"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Notificações
+              </h3>
               <button
                 onClick={generateNotifications}
                 disabled={loading}
-                className="text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                className="btn-ghost disabled:opacity-50"
+                style={{ color: "var(--brand)" }}
               >
                 {loading ? "..." : "Gerar"}
               </button>
@@ -101,34 +126,61 @@ export default function NotificationCenter() {
 
           <div className="max-h-96 overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="p-4 text-center text-slate-500">
+              <div
+                className="p-6 text-center text-sm"
+                style={{ color: "var(--text-muted)" }}
+              >
                 Nenhuma notificação
               </div>
             ) : (
               notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors ${
-                    !notification.lida ? "bg-blue-50" : ""
-                  }`}
+                  className="p-4 transition-colors"
+                  style={{
+                    borderBottom: "1px solid var(--border-subtle)",
+                    background: !notification.lida
+                      ? "rgba(51,102,255,0.06)"
+                      : "transparent",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background = "var(--bg-card-hover)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background = !notification.lida
+                      ? "rgba(51,102,255,0.06)"
+                      : "transparent")
+                  }
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
-                      <h4 className="font-medium text-sm text-slate-800">
+                      <h4
+                        className="font-semibold text-sm"
+                        style={{ color: "var(--text-primary)" }}
+                      >
                         {notification.titulo}
                       </h4>
-                      <p className="text-sm text-slate-600 mt-1">
+                      <p
+                        className="text-sm mt-1"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
                         {notification.mensagem}
                       </p>
-                      <span className="text-xs text-slate-400 mt-2 block">
-                        {new Date(notification.created_at).toLocaleDateString('pt-BR')}
+                      <span
+                        className="text-xs mt-2 block"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        {new Date(notification.created_at).toLocaleDateString(
+                          "pt-BR",
+                        )}
                       </span>
                     </div>
                     <div className="flex gap-1">
                       {!notification.lida && (
                         <button
                           onClick={() => markAsRead(notification.id)}
-                          className="p-1 hover:bg-green-100 rounded"
+                          className="p-1 rounded-lg transition-colors"
+                          style={{ color: "#17b364" }}
                           title="Marcar como lida"
                         >
                           <Check size={14} className="text-green-600" />
@@ -136,7 +188,8 @@ export default function NotificationCenter() {
                       )}
                       <button
                         onClick={() => deleteNotification(notification.id)}
-                        className="p-1 hover:bg-red-100 rounded"
+                        className="p-1 rounded-lg transition-colors"
+                        style={{ color: "#f93a4a" }}
                         title="Deletar"
                       >
                         <X size={14} className="text-red-600" />
@@ -152,10 +205,7 @@ export default function NotificationCenter() {
 
       {/* Overlay to close dropdown */}
       {isOpen && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setIsOpen(false)}
-        />
+        <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
       )}
     </div>
   );

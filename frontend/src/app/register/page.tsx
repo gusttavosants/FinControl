@@ -44,65 +44,107 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div
+      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
+      style={{ background: "var(--bg-base)" }}
+    >
+      <div className="absolute inset-0 bg-mesh-1 dark:bg-mesh-dark pointer-events-none" />
+
+      <div className="w-full max-w-md relative z-10 animate-slide-up">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <Wallet className="text-white" size={32} />
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+            style={{
+              background: "linear-gradient(135deg, #3366ff, #8b5cf6)",
+              boxShadow: "0 8px 32px rgba(51,102,255,0.25)",
+            }}
+          >
+            <Wallet className="text-white" size={26} />
           </div>
-          <h1 className="text-2xl font-bold text-slate-800">FinControl</h1>
-          <p className="text-sm text-slate-500 mt-1">Crie sua conta gratuita</p>
+          <h1
+            className="text-2xl font-extrabold tracking-tight"
+            style={{ color: "var(--text-primary)" }}
+          >
+            FinControl
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
+            Crie sua conta gratuita
+          </p>
         </div>
 
-        <div className="bg-white rounded-2xl p-8 border border-slate-100 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-800 mb-6">Criar conta</h2>
+        <div className="glass-card p-8">
+          <h2
+            className="text-lg font-bold mb-6"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Criar conta
+          </h2>
 
           {error && (
-            <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl mb-4 border border-red-200">
+            <div
+              className="badge-danger text-sm px-4 py-3 rounded-xl mb-4"
+              style={{ background: "rgba(249,58,74,0.08)" }}
+            >
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Nome</label>
+              <label
+                className="block text-sm font-medium mb-1.5"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Nome
+              </label>
               <input
                 type="text"
                 required
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="input-field"
                 placeholder="Seu nome completo"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+              <label
+                className="block text-sm font-medium mb-1.5"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Email
+              </label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="input-field"
                 placeholder="seu@email.com"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Senha</label>
+              <label
+                className="block text-sm font-medium mb-1.5"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Senha
+              </label>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
                   required
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent pr-10"
+                  className="input-field pr-10"
                   placeholder="Mínimo 6 caracteres"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  style={{ color: "var(--text-muted)" }}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -110,13 +152,18 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Confirmar Senha</label>
+              <label
+                className="block text-sm font-medium mb-1.5"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Confirmar Senha
+              </label>
               <input
                 type="password"
                 required
                 value={confirmSenha}
                 onChange={(e) => setConfirmSenha(e.target.value)}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="input-field"
                 placeholder="Repita a senha"
               />
             </div>
@@ -124,17 +171,25 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-primary-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-50"
+              className="btn-primary w-full py-3 disabled:opacity-50"
             >
-              <UserPlus size={16} />
+              {loading ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <UserPlus size={16} />
+              )}
               {loading ? "Criando conta..." : "Criar conta"}
             </button>
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
               Já tem uma conta?{" "}
-              <Link href="/login" className="text-primary-600 font-medium hover:underline">
+              <Link
+                href="/login"
+                className="font-semibold hover:underline"
+                style={{ color: "var(--brand)" }}
+              >
                 Fazer login
               </Link>
             </p>

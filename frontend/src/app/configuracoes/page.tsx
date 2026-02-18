@@ -286,64 +286,97 @@ export default function ConfiguracoesPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-3xl animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Configurações</h1>
-        <p className="text-sm text-[#a1a7b8] mt-1">
-          Gerencie seus dados e preferências
-        </p>
+        <h1 className="page-title">Configurações</h1>
+        <p className="page-subtitle">Gerencie seus dados e preferências</p>
       </div>
 
       {/* Message */}
       {message && (
         <div
-          className={`p-4 rounded-xl text-sm font-medium ${
-            message.type === "success"
-              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-              : "bg-red-500/10 text-red-400 border border-red-500/20"
-          }`}
+          className="glass-card p-4 text-sm font-medium"
+          style={{
+            borderColor:
+              message.type === "success"
+                ? "rgba(23,179,100,0.25)"
+                : "rgba(249,58,74,0.25)",
+            background:
+              message.type === "success"
+                ? "rgba(23,179,100,0.06)"
+                : "rgba(249,58,74,0.06)",
+            color: message.type === "success" ? "#17b364" : "#f93a4a",
+          }}
         >
           {message.text}
         </div>
       )}
 
       {/* Plano Casal */}
-      <div className="bg-[#1a1d2e] rounded-2xl p-6 border border-[#2a2d3e] shadow-sm">
+      <div className="glass-card p-6">
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 bg-pink-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(236,72,153,0.12)" }}
+          >
             <Heart size={20} className="text-pink-400" />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-white">Plano Casal</h3>
-            <p className="text-sm text-[#a1a7b8] mt-1">
+            <h3
+              className="font-semibold"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Plano Casal
+            </h3>
+            <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
               Compartilhe seus dados financeiros com seu parceiro(a). Ambos
               terão acesso às mesmas receitas, despesas e metas.
             </p>
 
             {sharedLoading ? (
-              <div className="mt-4 flex items-center gap-2 text-[#a1a7b8] text-sm">
+              <div
+                className="mt-4 flex items-center gap-2 text-sm"
+                style={{ color: "var(--text-muted)" }}
+              >
                 <Loader2 size={16} className="animate-spin" />
                 Carregando...
               </div>
             ) : sharedStatus?.type === "active" ? (
               /* Active shared account */
-              <div className="mt-4 p-4 bg-[#a3e635]/10 rounded-xl border border-[#a3e635]/20">
-                <div className="flex items-center gap-2 text-[#a3e635] font-medium text-sm">
+              <div
+                className="mt-4 p-4 rounded-xl"
+                style={{
+                  background: "rgba(89,139,255,0.10)",
+                  border: "1px solid rgba(89,139,255,0.25)",
+                }}
+              >
+                <div
+                  className="flex items-center gap-2 font-medium text-sm"
+                  style={{ color: "var(--brand)" }}
+                >
                   <Users size={16} />
                   Conta Compartilhada Ativa
                 </div>
                 <div className="mt-3 space-y-2">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#a1a7b8]">Titular</span>
-                    <span className="text-white font-medium">
+                    <span style={{ color: "var(--text-muted)" }}>Titular</span>
+                    <span
+                      className="font-medium"
+                      style={{ color: "var(--text-primary)" }}
+                    >
                       {sharedStatus.account.owner_name} (
                       {sharedStatus.account.owner_email})
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#a1a7b8]">Parceiro(a)</span>
-                    <span className="text-white font-medium">
+                    <span style={{ color: "var(--text-muted)" }}>
+                      Parceiro(a)
+                    </span>
+                    <span
+                      className="font-medium"
+                      style={{ color: "var(--text-primary)" }}
+                    >
                       {sharedStatus.account.partner_name ||
                         sharedStatus.account.partner_email}
                     </span>
@@ -351,7 +384,8 @@ export default function ConfiguracoesPage() {
                 </div>
                 <button
                   onClick={() => handleRemoveShared(sharedStatus.account.id)}
-                  className="mt-4 flex items-center gap-2 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 px-3 py-2 rounded-xl transition-colors"
+                  className="btn-secondary mt-4"
+                  style={{ color: "#f93a4a" }}
                 >
                   <X size={14} />
                   Desvincular Conta
@@ -359,21 +393,34 @@ export default function ConfiguracoesPage() {
               </div>
             ) : sharedStatus?.type === "pending_sent" ? (
               /* Pending invite sent */
-              <div className="mt-4 p-4 bg-yellow-500/10 rounded-xl border border-yellow-500/20">
-                <div className="flex items-center gap-2 text-yellow-400 font-medium text-sm">
+              <div
+                className="mt-4 p-4 rounded-xl"
+                style={{
+                  background: "rgba(249,131,7,0.08)",
+                  border: "1px solid rgba(249,131,7,0.25)",
+                }}
+              >
+                <div
+                  className="flex items-center gap-2 font-medium text-sm"
+                  style={{ color: "#f98307" }}
+                >
                   <Mail size={16} />
                   Convite Pendente
                 </div>
-                <p className="text-sm text-[#a1a7b8] mt-2">
+                <p
+                  className="text-sm mt-2"
+                  style={{ color: "var(--text-muted)" }}
+                >
                   Aguardando{" "}
-                  <strong className="text-white">
+                  <strong style={{ color: "var(--text-primary)" }}>
                     {sharedStatus.account.partner_email}
                   </strong>{" "}
                   aceitar o convite.
                 </p>
                 <button
                   onClick={() => handleCancelInvite(sharedStatus.account.id)}
-                  className="mt-3 flex items-center gap-2 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 px-3 py-2 rounded-xl transition-colors"
+                  className="btn-secondary mt-3"
+                  style={{ color: "#f93a4a" }}
                 >
                   <X size={14} />
                   Cancelar Convite
@@ -381,13 +428,25 @@ export default function ConfiguracoesPage() {
               </div>
             ) : sharedStatus?.type === "pending_received" ? (
               /* Pending invite received */
-              <div className="mt-4 p-4 bg-blue-500/10 rounded-xl border border-blue-500/20">
-                <div className="flex items-center gap-2 text-blue-400 font-medium text-sm">
+              <div
+                className="mt-4 p-4 rounded-xl"
+                style={{
+                  background: "rgba(51,102,255,0.08)",
+                  border: "1px solid rgba(51,102,255,0.25)",
+                }}
+              >
+                <div
+                  className="flex items-center gap-2 font-medium text-sm"
+                  style={{ color: "var(--brand)" }}
+                >
                   <UserPlus size={16} />
                   Convite Recebido
                 </div>
-                <p className="text-sm text-[#a1a7b8] mt-2">
-                  <strong className="text-white">
+                <p
+                  className="text-sm mt-2"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  <strong style={{ color: "var(--text-primary)" }}>
                     {sharedStatus.account.owner_name}
                   </strong>{" "}
                   ({sharedStatus.account.owner_email}) quer compartilhar os
@@ -396,14 +455,14 @@ export default function ConfiguracoesPage() {
                 <div className="mt-3 flex gap-2">
                   <button
                     onClick={() => handleAccept(sharedStatus.account.id)}
-                    className="flex items-center gap-2 bg-[#a3e635] text-[#0b0d14] px-4 py-2 rounded-xl text-sm font-medium hover:bg-[#bef264] transition-colors"
+                    className="btn-primary"
                   >
                     <Check size={14} />
                     Aceitar
                   </button>
                   <button
                     onClick={() => handleReject(sharedStatus.account.id)}
-                    className="flex items-center gap-2 bg-[#2a2d3e] text-[#a1a7b8] px-4 py-2 rounded-xl text-sm font-medium hover:bg-[#353849] hover:text-white transition-colors"
+                    className="btn-secondary"
                   >
                     <X size={14} />
                     Recusar
@@ -413,7 +472,10 @@ export default function ConfiguracoesPage() {
             ) : (
               /* No shared account - show invite form */
               <div className="mt-4">
-                <label className="text-sm font-medium text-[#a1a7b8]">
+                <label
+                  className="text-sm font-medium"
+                  style={{ color: "var(--text-secondary)" }}
+                >
                   Email do parceiro(a)
                 </label>
                 <div className="mt-2 flex gap-2">
@@ -422,13 +484,13 @@ export default function ConfiguracoesPage() {
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
                     placeholder="parceiro@email.com"
-                    className="flex-1 bg-[#12141f] border border-[#2a2d3e] rounded-xl px-4 py-2.5 text-sm text-white placeholder-[#6b7280] focus:outline-none focus:border-[#a3e635]/50 focus:ring-1 focus:ring-[#a3e635]/30 transition-colors"
+                    className="input-field flex-1"
                     onKeyDown={(e) => e.key === "Enter" && handleInvite()}
                   />
                   <button
                     onClick={handleInvite}
                     disabled={inviteLoading || !inviteEmail.trim()}
-                    className="flex items-center gap-2 bg-[#a3e635] text-[#0b0d14] px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-[#bef264] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {inviteLoading ? (
                       <Loader2 size={16} className="animate-spin" />
@@ -438,7 +500,10 @@ export default function ConfiguracoesPage() {
                     Convidar
                   </button>
                 </div>
-                <p className="text-xs text-[#6b7280] mt-2">
+                <p
+                  className="text-xs mt-2"
+                  style={{ color: "var(--text-muted)" }}
+                >
                   O parceiro(a) precisa ter uma conta no FinControl. Ao aceitar,
                   ambos verão os mesmos dados.
                 </p>
@@ -449,21 +514,29 @@ export default function ConfiguracoesPage() {
       </div>
 
       {/* Dados de Exemplo */}
-      <div className="bg-[#1a1d2e] rounded-2xl p-6 border border-[#2a2d3e] shadow-sm">
+      <div className="glass-card p-6">
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 bg-[#a3e635]/10 rounded-xl flex items-center justify-center flex-shrink-0">
-            <Database size={20} className="text-[#a3e635]" />
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(51,102,255,0.10)" }}
+          >
+            <Database size={20} style={{ color: "var(--brand)" }} />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-white">Dados de Exemplo</h3>
-            <p className="text-sm text-[#a1a7b8] mt-1">
+            <h3
+              className="font-semibold"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Dados de Exemplo
+            </h3>
+            <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
               Carregue dados fictícios para testar a aplicação. Inclui receitas,
               despesas e dados do mês anterior.
             </p>
             <button
               onClick={handleSeed}
               disabled={loading}
-              className="mt-3 flex items-center gap-2 bg-[#a3e635] text-[#0b0d14] px-4 py-2 rounded-xl text-sm font-medium hover:bg-[#bef264] transition-colors disabled:opacity-50"
+              className="btn-primary mt-3 disabled:opacity-50"
             >
               <Database size={16} />
               {loading ? "Carregando..." : "Carregar Dados de Exemplo"}
@@ -473,21 +546,26 @@ export default function ConfiguracoesPage() {
       </div>
 
       {/* Exportar Dados */}
-      <div className="bg-[#1a1d2e] rounded-2xl p-6 border border-[#2a2d3e] shadow-sm">
+      <div className="glass-card p-6">
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
-            <Download size={20} className="text-blue-400" />
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(51,102,255,0.10)" }}
+          >
+            <Download size={20} style={{ color: "var(--brand)" }} />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-white">Exportar Dados</h3>
-            <p className="text-sm text-[#a1a7b8] mt-1">
+            <h3
+              className="font-semibold"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Exportar Dados
+            </h3>
+            <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
               Faça backup dos seus dados financeiros em formato JSON. Inclui
               todas as receitas e despesas.
             </p>
-            <button
-              onClick={handleExport}
-              className="mt-3 flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
-            >
+            <button onClick={handleExport} className="btn-secondary mt-3">
               <Download size={16} />
               Exportar JSON
             </button>
@@ -496,21 +574,32 @@ export default function ConfiguracoesPage() {
       </div>
 
       {/* Importar Planilha */}
-      <div className="bg-[#1a1d2e] rounded-2xl p-6 border border-[#2a2d3e] shadow-sm">
+      <div className="glass-card p-6">
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
-            <FileSpreadsheet size={20} className="text-emerald-400" />
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(23,179,100,0.12)" }}
+          >
+            <FileSpreadsheet size={20} className="text-accent-500" />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-white">Importar Planilha</h3>
-            <p className="text-sm text-[#a1a7b8] mt-1">
+            <h3
+              className="font-semibold"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Importar Planilha
+            </h3>
+            <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
               Importe dados de planilhas Excel (.xlsx) ou CSV. O sistema detecta
               automaticamente as colunas e importa receitas ou despesas.
             </p>
 
             {/* Tipo de Importação */}
             <div className="mt-4">
-              <label className="text-sm font-medium text-[#a1a7b8]">
+              <label
+                className="text-sm font-medium"
+                style={{ color: "var(--text-secondary)" }}
+              >
                 Tipo de Dados
               </label>
               <div className="mt-2 flex gap-4">
@@ -522,7 +611,12 @@ export default function ConfiguracoesPage() {
                     onChange={(e) => setImportTipo(e.target.value as "despesa")}
                     className="text-[#a3e635] accent-[#a3e635]"
                   />
-                  <span className="text-sm text-[#a1a7b8]">Despesas</span>
+                  <span
+                    className="text-sm"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Despesas
+                  </span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -532,7 +626,12 @@ export default function ConfiguracoesPage() {
                     onChange={(e) => setImportTipo(e.target.value as "receita")}
                     className="text-[#a3e635] accent-[#a3e635]"
                   />
-                  <span className="text-sm text-[#a1a7b8]">Receitas</span>
+                  <span
+                    className="text-sm"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Receitas
+                  </span>
                 </label>
               </div>
             </div>
@@ -549,13 +648,16 @@ export default function ConfiguracoesPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 bg-[#2a2d3e] text-[#a1a7b8] px-4 py-2 rounded-xl text-sm font-medium hover:bg-[#353849] hover:text-white transition-colors"
+                  className="btn-secondary"
                 >
                   <Upload size={16} />
                   Selecionar Arquivo
                 </button>
                 {importFile && (
-                  <span className="text-sm text-[#a1a7b8] self-center">
+                  <span
+                    className="text-sm self-center"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     {importFile.name}
                   </span>
                 )}
@@ -568,7 +670,7 @@ export default function ConfiguracoesPage() {
                 <button
                   onClick={handlePreviewImport}
                   disabled={importLoading}
-                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-500 transition-colors disabled:opacity-50"
+                  className="btn-secondary disabled:opacity-50"
                 >
                   <Eye size={16} />
                   {importLoading ? "Processando..." : "Visualizar Dados"}
@@ -578,20 +680,42 @@ export default function ConfiguracoesPage() {
 
             {/* Preview Results */}
             {importPreview && (
-              <div className="mt-4 p-4 bg-[#12141f] rounded-xl border border-[#2a2d3e]">
-                <h4 className="font-medium text-white mb-2">
+              <div
+                className="mt-4 p-4 rounded-xl"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--border-subtle)",
+                }}
+              >
+                <h4
+                  className="font-medium mb-2"
+                  style={{ color: "var(--text-primary)" }}
+                >
                   Preview dos Dados
                 </h4>
-                <div className="text-sm text-[#a1a7b8] space-y-1">
+                <div
+                  className="text-sm space-y-1"
+                  style={{ color: "var(--text-muted)" }}
+                >
                   <div>Total de linhas: {importPreview.total_rows}</div>
                   <div>
                     Colunas detectadas: {importPreview.columns.join(", ")}
                   </div>
                   <div className="mt-3">
-                    <div className="font-medium mb-1 text-[#a1a7b8]">
+                    <div
+                      className="font-medium mb-1"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
                       Primeiras 10 linhas:
                     </div>
-                    <div className="max-h-32 overflow-y-auto bg-[#0b0d14] p-2 rounded border border-[#2a2d3e] text-xs text-[#a1a7b8]">
+                    <div
+                      className="max-h-32 overflow-y-auto p-2 rounded text-xs"
+                      style={{
+                        background: "var(--bg-card)",
+                        border: "1px solid var(--border-subtle)",
+                        color: "var(--text-muted)",
+                      }}
+                    >
                       {importPreview.preview.map((row: any, i: number) => (
                         <div key={i} className="border-b last:border-b-0 py-1">
                           {Object.entries(row).map(([col, val]) => (
@@ -608,14 +732,17 @@ export default function ConfiguracoesPage() {
                   <button
                     onClick={handleExecuteImport}
                     disabled={importLoading}
-                    className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+                    className="btn-primary disabled:opacity-50"
+                    style={{
+                      background: "linear-gradient(135deg, #17b364, #3366ff)",
+                    }}
                   >
                     <CheckCircle2 size={16} />
                     {importLoading ? "Importando..." : "Confirmar Importação"}
                   </button>
                   <button
                     onClick={() => setImportPreview(null)}
-                    className="flex items-center gap-2 bg-[#2a2d3e] text-[#a1a7b8] px-4 py-2 rounded-xl text-sm font-medium hover:bg-[#353849] hover:text-white transition-colors"
+                    className="btn-secondary"
                   >
                     <XCircle size={16} />
                     Cancelar
@@ -626,17 +753,35 @@ export default function ConfiguracoesPage() {
 
             {/* Import Results */}
             {importResult && (
-              <div className="mt-4 p-4 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
-                <div className="flex items-center gap-2 text-emerald-400 font-medium">
+              <div
+                className="mt-4 p-4 rounded-xl"
+                style={{
+                  background: "rgba(23,179,100,0.08)",
+                  border: "1px solid rgba(23,179,100,0.25)",
+                }}
+              >
+                <div
+                  className="flex items-center gap-2 font-medium"
+                  style={{ color: "#17b364" }}
+                >
                   <CheckCircle2 size={16} />
                   Importação Concluída
                 </div>
-                <div className="text-sm text-emerald-300 mt-2">
+                <div
+                  className="text-sm mt-2"
+                  style={{ color: "var(--text-secondary)" }}
+                >
                   <div>{importResult.message}</div>
                   {importResult.errors.length > 0 && (
                     <div className="mt-2">
                       <div className="font-medium">Erros encontrados:</div>
-                      <div className="max-h-20 overflow-y-auto bg-[#0b0d14] p-2 rounded border border-[#2a2d3e] text-xs mt-1">
+                      <div
+                        className="max-h-20 overflow-y-auto p-2 rounded text-xs mt-1"
+                        style={{
+                          background: "var(--bg-card)",
+                          border: "1px solid var(--border-subtle)",
+                        }}
+                      >
                         {importResult.errors.map((error: string, i: number) => (
                           <div key={i} className="text-red-600">
                             {error}
@@ -653,33 +798,66 @@ export default function ConfiguracoesPage() {
       </div>
 
       {/* Informações do Sistema */}
-      <div className="bg-[#1a1d2e] rounded-2xl p-6 border border-[#2a2d3e] shadow-sm">
+      <div className="glass-card p-6">
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 bg-[#2a2d3e] rounded-xl flex items-center justify-center flex-shrink-0">
-            <Settings size={20} className="text-[#a1a7b8]" />
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(100,116,139,0.12)" }}
+          >
+            <Settings size={20} style={{ color: "var(--text-secondary)" }} />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-white">Informações do Sistema</h3>
+            <h3
+              className="font-semibold"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Informações do Sistema
+            </h3>
             <div className="mt-3 space-y-2">
-              <div className="flex items-center justify-between text-sm py-2 border-b border-[#2a2d3e]">
-                <span className="text-[#6b7280]">Versão</span>
-                <span className="font-medium text-[#a1a7b8]">1.0.0</span>
+              <div
+                className="flex items-center justify-between text-sm py-2"
+                style={{ borderBottom: "1px solid var(--border-subtle)" }}
+              >
+                <span style={{ color: "var(--text-muted)" }}>Versão</span>
+                <span
+                  className="font-medium"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  1.0.0
+                </span>
               </div>
-              <div className="flex items-center justify-between text-sm py-2 border-b border-[#2a2d3e]">
-                <span className="text-[#6b7280]">Backend</span>
-                <span className="font-medium text-[#a1a7b8]">
+              <div
+                className="flex items-center justify-between text-sm py-2"
+                style={{ borderBottom: "1px solid var(--border-subtle)" }}
+              >
+                <span style={{ color: "var(--text-muted)" }}>Backend</span>
+                <span
+                  className="font-medium"
+                  style={{ color: "var(--text-secondary)" }}
+                >
                   FastAPI + SQLite
                 </span>
               </div>
-              <div className="flex items-center justify-between text-sm py-2 border-b border-[#2a2d3e]">
-                <span className="text-[#6b7280]">Frontend</span>
-                <span className="font-medium text-[#a1a7b8]">
+              <div
+                className="flex items-center justify-between text-sm py-2"
+                style={{ borderBottom: "1px solid var(--border-subtle)" }}
+              >
+                <span style={{ color: "var(--text-muted)" }}>Frontend</span>
+                <span
+                  className="font-medium"
+                  style={{ color: "var(--text-secondary)" }}
+                >
                   Next.js 14 + Tailwind CSS
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm py-2">
-                <span className="text-[#6b7280]">Banco de Dados</span>
-                <span className="font-medium text-[#a1a7b8]">
+                <span style={{ color: "var(--text-muted)" }}>
+                  Banco de Dados
+                </span>
+                <span
+                  className="font-medium"
+                  style={{ color: "var(--text-secondary)" }}
+                >
                   SQLite (local)
                 </span>
               </div>
@@ -689,20 +867,37 @@ export default function ConfiguracoesPage() {
       </div>
 
       {/* Zona de Perigo */}
-      <div className="bg-[#1a1d2e] rounded-2xl p-6 border border-red-500/30 shadow-sm">
+      <div
+        className="glass-card p-6"
+        style={{
+          borderColor: "rgba(249,58,74,0.30)",
+          background: "rgba(249,58,74,0.04)",
+        }}
+      >
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(249,58,74,0.10)" }}
+          >
             <AlertTriangle size={20} className="text-red-400" />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-red-400">Zona de Perigo</h3>
-            <p className="text-sm text-red-400/70 mt-1">
+            <h3 className="font-semibold" style={{ color: "#f93a4a" }}>
+              Zona de Perigo
+            </h3>
+            <p
+              className="text-sm mt-1"
+              style={{ color: "rgba(249,58,74,0.8)" }}
+            >
               Ações irreversíveis. Tenha certeza antes de prosseguir.
             </p>
             <button
               onClick={handleClearData}
               disabled={loading}
-              className="mt-3 flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+              className="btn-primary mt-3 disabled:opacity-50"
+              style={{
+                background: "linear-gradient(135deg, #f93a4a, #dd5f02)",
+              }}
             >
               <Trash2 size={16} />
               {loading ? "Processando..." : "Apagar Todos os Dados"}

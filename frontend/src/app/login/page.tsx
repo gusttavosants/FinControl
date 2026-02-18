@@ -30,53 +30,90 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div
+      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
+      style={{ background: "var(--bg-base)" }}
+    >
+      <div className="absolute inset-0 bg-mesh-1 dark:bg-mesh-dark pointer-events-none" />
+
+      <div className="w-full max-w-md relative z-10 animate-slide-up">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <Wallet className="text-white" size={32} />
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+            style={{
+              background: "linear-gradient(135deg, #3366ff, #8b5cf6)",
+              boxShadow: "0 8px 32px rgba(51,102,255,0.3)",
+            }}
+          >
+            <Wallet className="text-white" size={26} />
           </div>
-          <h1 className="text-2xl font-bold text-slate-800">FinControl</h1>
-          <p className="text-sm text-slate-500 mt-1">Controle Financeiro Pessoal</p>
+          <h1
+            className="text-2xl font-extrabold tracking-tight"
+            style={{ color: "var(--text-primary)" }}
+          >
+            FinControl
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
+            Controle Financeiro Pessoal
+          </p>
         </div>
 
-        <div className="bg-white rounded-2xl p-8 border border-slate-100 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-800 mb-6">Entrar na sua conta</h2>
+        <div className="glass-card p-8">
+          <h2
+            className="text-lg font-bold mb-6"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Entrar na sua conta
+          </h2>
 
           {error && (
-            <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl mb-4 border border-red-200">
+            <div
+              className="badge-danger text-sm px-4 py-3 rounded-xl mb-4 w-full flex items-center"
+              style={{ background: "rgba(249,58,74,0.08)" }}
+            >
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+              <label
+                className="block text-sm font-medium mb-1.5"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Email
+              </label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="input-field"
                 placeholder="seu@email.com"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Senha</label>
+              <label
+                className="block text-sm font-medium mb-1.5"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Senha
+              </label>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
                   required
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent pr-10"
+                  className="input-field pr-10"
                   placeholder="Sua senha"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                  style={{ color: "var(--text-muted)" }}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -86,17 +123,25 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-primary-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-50"
+              className="btn-primary w-full py-3 disabled:opacity-50"
             >
-              <LogIn size={16} />
+              {loading ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <LogIn size={16} />
+              )}
               {loading ? "Entrando..." : "Entrar"}
             </button>
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
               Não tem uma conta?{" "}
-              <Link href="/register" className="text-primary-600 font-medium hover:underline">
+              <Link
+                href="/register"
+                className="font-semibold hover:underline"
+                style={{ color: "var(--brand)" }}
+              >
                 Criar conta
               </Link>
             </p>

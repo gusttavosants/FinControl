@@ -181,14 +181,12 @@ export default function DespesasPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Despesas</h1>
-          <p className="text-sm text-[#a1a7b8] mt-1">
-            Controle seus gastos e pagamentos
-          </p>
+          <h1 className="page-title">Despesas</h1>
+          <p className="page-subtitle">Controle seus gastos e pagamentos</p>
         </div>
         <div className="flex items-center gap-3">
           <MonthSelector
@@ -199,10 +197,7 @@ export default function DespesasPage() {
               setAno(a);
             }}
           />
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-2 bg-[#a3e635] text-[#0b0d14] px-4 py-2 rounded-xl text-sm font-semibold hover:bg-[#84cc16] transition-colors"
-          >
+          <button onClick={openCreate} className="btn-primary">
             <Plus size={16} />
             Nova Despesa
           </button>
@@ -211,30 +206,48 @@ export default function DespesasPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-br from-red-500/20 to-rose-600/10 rounded-2xl p-5 border border-red-500/20">
-          <p className="text-sm font-medium text-red-400">Total de Despesas</p>
-          <p className="text-2xl font-bold text-white mt-1">
+        <div className="stat-card stat-card-danger">
+          <p
+            className="text-sm font-medium"
+            style={{ color: "var(--text-muted)" }}
+          >
+            Total de Despesas
+          </p>
+          <p
+            className="text-2xl font-extrabold tracking-tight mt-1"
+            style={{ color: "var(--text-primary)" }}
+          >
             {formatCurrency(totalDespesas)}
           </p>
-          <p className="text-xs text-[#6b7280] mt-1">
+          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
             {despesas.length} lançamentos
           </p>
         </div>
-        <div className="bg-[#1a1d2e] rounded-2xl p-5 border border-[#2a2d3e]">
-          <p className="text-sm font-medium text-[#a1a7b8]">Pagas</p>
-          <p className="text-2xl font-bold text-emerald-400 mt-1">
+        <div className="stat-card stat-card-accent">
+          <p
+            className="text-sm font-medium"
+            style={{ color: "var(--text-muted)" }}
+          >
+            Pagas
+          </p>
+          <p className="text-2xl font-extrabold tracking-tight mt-1 text-accent-500">
             {formatCurrency(totalPagas)}
           </p>
-          <p className="text-xs text-[#6b7280] mt-1">
+          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
             {despesas.filter((d) => d.pago).length} itens
           </p>
         </div>
-        <div className="bg-[#1a1d2e] rounded-2xl p-5 border border-[#2a2d3e]">
-          <p className="text-sm font-medium text-[#a1a7b8]">Pendentes</p>
-          <p className="text-2xl font-bold text-amber-400 mt-1">
+        <div className="stat-card stat-card-warn">
+          <p
+            className="text-sm font-medium"
+            style={{ color: "var(--text-muted)" }}
+          >
+            Pendentes
+          </p>
+          <p className="text-2xl font-extrabold tracking-tight mt-1 text-warn-500">
             {formatCurrency(totalPendentes)}
           </p>
-          <p className="text-xs text-[#6b7280] mt-1">
+          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
             {despesas.filter((d) => !d.pago).length} itens
           </p>
         </div>
@@ -246,11 +259,7 @@ export default function DespesasPage() {
           <button
             key={f}
             onClick={() => setFiltro(f)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-              filtro === f
-                ? "bg-[#a3e635] text-[#0b0d14] font-semibold"
-                : "bg-[#1a1d2e] text-[#a1a7b8] border border-[#2a2d3e] hover:bg-[#1f2237] hover:text-white"
-            }`}
+            className={filtro === f ? "btn-primary" : "btn-secondary"}
           >
             {f === "todos" ? "Todos" : f === "pago" ? "Pagos" : "Pendentes"}
           </button>
@@ -259,7 +268,7 @@ export default function DespesasPage() {
         <select
           value={categoriaFiltro}
           onChange={(e) => setCategoriaFiltro(e.target.value)}
-          className="px-4 py-2 rounded-xl text-sm font-medium bg-[#1a1d2e] text-[#a1a7b8] border border-[#2a2d3e] hover:bg-[#1f2237] focus:outline-none focus:ring-2 focus:ring-[#a3e635]/30 focus:border-[#a3e635]"
+          className="input-field w-auto min-w-[220px]"
         >
           <option value="todas">Todas as Categorias</option>
           {categorias.map((cat) => (
@@ -271,18 +280,25 @@ export default function DespesasPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-[#1a1d2e] rounded-2xl border border-[#2a2d3e] overflow-hidden">
+      <div className="glass-card overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-48">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#a3e635]" />
+            <div
+              className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin"
+              style={{
+                borderColor: "var(--brand)",
+                borderTopColor: "transparent",
+              }}
+            />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16">
-            <TrendingDown size={48} className="mx-auto text-[#6b7280] mb-4" />
-            <p className="text-[#a1a7b8] font-medium">
-              Nenhuma despesa encontrada
-            </p>
-            <p className="text-sm text-[#6b7280] mt-1">
+          <div
+            className="text-center py-16"
+            style={{ color: "var(--text-muted)" }}
+          >
+            <TrendingDown size={48} className="mx-auto mb-4 opacity-30" />
+            <p className="font-semibold">Nenhuma despesa encontrada</p>
+            <p className="text-sm mt-1">
               Clique em "Nova Despesa" para adicionar
             </p>
           </div>
@@ -290,26 +306,47 @@ export default function DespesasPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="text-center py-3 px-3 text-xs font-semibold text-slate-400 uppercase w-12">
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th
+                    className="text-center py-3 px-3 text-xs font-bold uppercase tracking-wider w-12"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     Status
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">
+                  <th
+                    className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     Descrição
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">
+                  <th
+                    className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     Categoria
                   </th>
-                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase">
+                  <th
+                    className="text-right py-3 px-4 text-xs font-bold uppercase tracking-wider"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     Valor
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">
+                  <th
+                    className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     Vencimento
                   </th>
-                  <th className="text-center py-3 px-4 text-xs font-semibold text-slate-400 uppercase">
+                  <th
+                    className="text-center py-3 px-4 text-xs font-bold uppercase tracking-wider"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     Parcelas
                   </th>
-                  <th className="text-center py-3 px-4 text-xs font-semibold text-slate-400 uppercase">
+                  <th
+                    className="text-center py-3 px-4 text-xs font-bold uppercase tracking-wider"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     Ações
                   </th>
                 </tr>
@@ -318,7 +355,15 @@ export default function DespesasPage() {
                 {filtered.map((d) => (
                   <tr
                     key={d.id}
-                    className={`border-b border-slate-50 hover:bg-slate-50 transition-colors ${d.pago ? "opacity-60" : ""}`}
+                    className={`transition-colors ${d.pago ? "opacity-60" : ""}`}
+                    style={{ borderBottom: "1px solid var(--border-subtle)" }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background =
+                        "var(--bg-card-hover)")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = "transparent")
+                    }
                   >
                     <td className="py-3 px-3 text-center">
                       <button
@@ -334,44 +379,61 @@ export default function DespesasPage() {
                     </td>
                     <td className="py-3 px-4">
                       <p
-                        className={`text-sm font-medium ${d.pago ? "line-through text-slate-400" : "text-slate-700"}`}
+                        className={`text-sm font-semibold ${d.pago ? "line-through" : ""}`}
+                        style={{
+                          color: d.pago
+                            ? "var(--text-muted)"
+                            : "var(--text-primary)",
+                        }}
                       >
                         {d.descricao}
                       </p>
                     </td>
                     <td className="py-3 px-4">
-                      <span className="text-xs bg-red-50 text-red-700 px-2.5 py-1 rounded-full font-medium">
+                      <span className="badge badge-danger text-xs">
                         {d.categoria}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-sm font-semibold text-red-600 text-right">
+                    <td
+                      className="py-3 px-4 text-sm font-bold text-right"
+                      style={{ color: "var(--text-primary)" }}
+                    >
                       {formatCurrency(d.valor)}
                     </td>
-                    <td className="py-3 px-4 text-sm text-slate-600">
+                    <td
+                      className="py-3 px-4 text-sm"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
                       {formatDate(d.data_vencimento)}
                     </td>
                     <td className="py-3 px-4 text-center">
                       {d.parcela_atual && d.parcela_total ? (
-                        <span className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full font-medium">
+                        <span className="badge badge-info text-xs">
                           {d.parcela_atual}/{d.parcela_total}
                         </span>
                       ) : (
-                        <span className="text-xs text-slate-400">—</span>
+                        <span
+                          className="text-xs"
+                          style={{ color: "var(--text-muted)" }}
+                        >
+                          —
+                        </span>
                       )}
                     </td>
                     <td className="py-3 px-4">
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => openEdit(d)}
-                          className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
+                          className="btn-ghost px-2 py-1"
                         >
                           <Pencil size={14} className="text-slate-400" />
                         </button>
                         <button
                           onClick={() => handleDelete(d.id)}
-                          className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                          className="btn-ghost px-2 py-1"
+                          style={{ color: "#f93a4a" }}
                         >
-                          <Trash2 size={14} className="text-red-400" />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </td>
@@ -391,7 +453,10 @@ export default function DespesasPage() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label
+              className="block text-sm font-medium mb-1.5"
+              style={{ color: "var(--text-secondary)" }}
+            >
               Descrição
             </label>
             <input
@@ -399,13 +464,16 @@ export default function DespesasPage() {
               required
               value={form.descricao}
               onChange={(e) => setForm({ ...form, descricao: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              className="input-field"
               placeholder="Ex: Aluguel Apartamento"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1.5"
+                style={{ color: "var(--text-secondary)" }}
+              >
                 Categoria
               </label>
               <select
@@ -414,7 +482,7 @@ export default function DespesasPage() {
                 onChange={(e) =>
                   setForm({ ...form, categoria: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                className="input-field"
               >
                 {categorias.map((c) => (
                   <option key={c} value={c}>
@@ -424,7 +492,10 @@ export default function DespesasPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1.5"
+                style={{ color: "var(--text-secondary)" }}
+              >
                 Valor (R$)
               </label>
               <input
@@ -433,13 +504,16 @@ export default function DespesasPage() {
                 required
                 value={form.valor}
                 onChange={(e) => setForm({ ...form, valor: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                className="input-field"
                 placeholder="0,00"
               />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label
+              className="block text-sm font-medium mb-1.5"
+              style={{ color: "var(--text-secondary)" }}
+            >
               Data de Vencimento
             </label>
             <input
@@ -449,12 +523,15 @@ export default function DespesasPage() {
               onChange={(e) =>
                 setForm({ ...form, data_vencimento: e.target.value })
               }
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              className="input-field"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1.5"
+                style={{ color: "var(--text-secondary)" }}
+              >
                 Parcela Atual
               </label>
               <input
@@ -464,12 +541,15 @@ export default function DespesasPage() {
                 onChange={(e) =>
                   setForm({ ...form, parcela_atual: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                className="input-field"
                 placeholder="Ex: 3"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1.5"
+                style={{ color: "var(--text-secondary)" }}
+              >
                 Total de Parcelas
               </label>
               <input
@@ -479,13 +559,16 @@ export default function DespesasPage() {
                 onChange={(e) =>
                   setForm({ ...form, parcela_total: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                className="input-field"
                 placeholder="Ex: 10"
               />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label
+              className="block text-sm font-medium mb-1.5"
+              style={{ color: "var(--text-secondary)" }}
+            >
               Observações
             </label>
             <textarea
@@ -493,7 +576,7 @@ export default function DespesasPage() {
               onChange={(e) =>
                 setForm({ ...form, observacoes: e.target.value })
               }
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              className="input-field"
               rows={2}
               placeholder="Informações adicionais..."
             />
@@ -512,16 +595,26 @@ export default function DespesasPage() {
             />
             <label
               htmlFor="recorrente"
-              className="text-sm font-medium text-slate-700"
+              className="text-sm font-medium"
+              style={{ color: "var(--text-secondary)" }}
             >
               Despesa recorrente
             </label>
           </div>
 
           {form.recorrente && (
-            <div className="grid grid-cols-2 gap-4 p-4 bg-red-50 rounded-xl border border-red-100">
+            <div
+              className="grid grid-cols-2 gap-4 p-4 rounded-xl"
+              style={{
+                background: "rgba(249,58,74,0.06)",
+                border: "1px solid rgba(249,58,74,0.18)",
+              }}
+            >
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label
+                  className="block text-sm font-medium mb-1.5"
+                  style={{ color: "var(--text-secondary)" }}
+                >
                   Frequência
                 </label>
                 <select
@@ -529,7 +622,7 @@ export default function DespesasPage() {
                   onChange={(e) =>
                     setForm({ ...form, frequencia_recorrencia: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="input-field"
                 >
                   <option value="">Selecione...</option>
                   <option value="mensal">Mensal</option>
@@ -538,7 +631,10 @@ export default function DespesasPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label
+                  className="block text-sm font-medium mb-1.5"
+                  style={{ color: "var(--text-secondary)" }}
+                >
                   Parcelas restantes
                 </label>
                 <input
@@ -548,7 +644,7 @@ export default function DespesasPage() {
                   onChange={(e) =>
                     setForm({ ...form, parcelas_restantes: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="input-field"
                   placeholder="Ex: 12"
                 />
               </div>
@@ -559,14 +655,11 @@ export default function DespesasPage() {
             <button
               type="button"
               onClick={() => setModalOpen(false)}
-              className="flex-1 px-4 py-2.5 border border-[#2a2d3e] text-[#a1a7b8] rounded-xl text-sm font-medium hover:bg-[#242740] transition-colors"
+              className="btn-secondary flex-1"
             >
               Cancelar
             </button>
-            <button
-              type="submit"
-              className="flex-1 px-4 py-2.5 bg-[#a3e635] text-[#0b0d14] rounded-xl text-sm font-semibold hover:bg-[#84cc16] transition-colors"
-            >
+            <button type="submit" className="btn-primary flex-1">
               {editingId ? "Salvar" : "Criar"}
             </button>
           </div>

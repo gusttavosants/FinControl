@@ -10,6 +10,8 @@ import {
   CheckCircle2,
   Database,
   Download,
+  ArrowUpRight,
+  ArrowDownRight,
 } from "lucide-react";
 import {
   PieChart,
@@ -23,6 +25,8 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  AreaChart,
+  Area,
   BarChart,
   Bar,
 } from "recharts";
@@ -110,7 +114,10 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
+        <div
+          className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
+          style={{ borderColor: "var(--brand)", borderTopColor: "transparent" }}
+        />
       </div>
     );
   }
@@ -118,17 +125,23 @@ export default function DashboardPage() {
   const isEmpty =
     summary && summary.total_receitas === 0 && summary.total_despesas === 0;
 
+  const CHART_COLORS = {
+    receitas: "#17b364",
+    despesas: "#f93a4a",
+    saldo: "#3366ff",
+    grid: "var(--border-subtle)",
+    text: "var(--text-muted)",
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-          <p className="text-sm text-[#a1a7b8] mt-1">
-            Visão geral das suas finanças
-          </p>
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-subtitle">Visão geral das suas finanças</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <MonthSelector
             mes={mes}
             ano={ano}
@@ -137,20 +150,14 @@ export default function DashboardPage() {
               setAno(a);
             }}
           />
-          <a
-            href={exportAPI.excel(mes, ano)}
-            className="flex items-center gap-2 bg-[#a3e635] text-[#0b0d14] px-4 py-2 rounded-xl text-sm font-semibold hover:bg-[#84cc16] transition-colors"
-          >
-            <Download size={16} />
-            Exportar Excel
+          <a href={exportAPI.excel(mes, ano)} className="btn-secondary">
+            <Download size={15} />
+            Exportar
           </a>
           {isEmpty && (
-            <button
-              onClick={handleSeed}
-              className="flex items-center gap-2 bg-[#1a1d2e] text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-[#242740] transition-colors border border-[#2a2d3e]"
-            >
-              <Database size={16} />
-              Carregar Dados de Exemplo
+            <button onClick={handleSeed} className="btn-primary">
+              <Database size={15} />
+              Carregar Dados
             </button>
           )}
         </div>
@@ -159,77 +166,121 @@ export default function DashboardPage() {
       {/* KPI Cards */}
       {summary && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-[#1a1d2e] rounded-2xl p-5 border border-[#2a2d3e] hover:border-[#353849] transition-colors">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-[#a1a7b8]">
+          <div className="stat-card stat-card-accent">
+            <div className="flex items-center justify-between mb-4">
+              <span
+                className="text-sm font-medium"
+                style={{ color: "var(--text-muted)" }}
+              >
                 Receitas
               </span>
-              <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center">
-                <TrendingUp size={20} className="text-emerald-400" />
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ background: "rgba(23, 179, 100, 0.1)" }}
+              >
+                <TrendingUp size={18} className="text-accent-500" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-white">
+            <p
+              className="text-2xl font-extrabold tracking-tight"
+              style={{ color: "var(--text-primary)" }}
+            >
               {formatCurrency(summary.total_receitas)}
             </p>
-            <p className="text-xs text-[#6b7280] mt-1">
-              {summary.total_receitas_count} lançamentos
-            </p>
+            <div className="flex items-center gap-1 mt-2">
+              <ArrowUpRight size={14} className="text-accent-500" />
+              <span className="text-xs font-medium text-accent-500">
+                {summary.total_receitas_count} lançamentos
+              </span>
+            </div>
           </div>
 
-          <div className="bg-[#1a1d2e] rounded-2xl p-5 border border-[#2a2d3e] hover:border-[#353849] transition-colors">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-[#a1a7b8]">
+          <div className="stat-card stat-card-danger">
+            <div className="flex items-center justify-between mb-4">
+              <span
+                className="text-sm font-medium"
+                style={{ color: "var(--text-muted)" }}
+              >
                 Despesas
               </span>
-              <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center">
-                <TrendingDown size={20} className="text-red-400" />
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ background: "rgba(249, 58, 74, 0.1)" }}
+              >
+                <TrendingDown size={18} className="text-danger-500" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-white">
+            <p
+              className="text-2xl font-extrabold tracking-tight"
+              style={{ color: "var(--text-primary)" }}
+            >
               {formatCurrency(summary.total_despesas)}
             </p>
-            <p className="text-xs text-[#6b7280] mt-1">
-              {summary.total_despesas_count} lançamentos
-            </p>
+            <div className="flex items-center gap-1 mt-2">
+              <ArrowDownRight size={14} className="text-danger-500" />
+              <span className="text-xs font-medium text-danger-500">
+                {summary.total_despesas_count} lançamentos
+              </span>
+            </div>
           </div>
 
-          <div className="bg-[#1a1d2e] rounded-2xl p-5 border border-[#2a2d3e] hover:border-[#353849] transition-colors">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-[#a1a7b8]">Saldo</span>
+          <div className="stat-card stat-card-brand">
+            <div className="flex items-center justify-between mb-4">
+              <span
+                className="text-sm font-medium"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Saldo
+              </span>
               <div
-                className={`w-10 h-10 rounded-xl flex items-center justify-center ${summary.saldo >= 0 ? "bg-[#a3e635]/10" : "bg-red-500/10"}`}
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{
+                  background:
+                    summary.saldo >= 0
+                      ? "rgba(23, 179, 100, 0.1)"
+                      : "rgba(249, 58, 74, 0.1)",
+                }}
               >
                 <Wallet
-                  size={20}
+                  size={18}
                   className={
-                    summary.saldo >= 0 ? "text-[#a3e635]" : "text-red-400"
+                    summary.saldo >= 0 ? "text-accent-500" : "text-danger-500"
                   }
                 />
               </div>
             </div>
             <p
-              className={`text-2xl font-bold ${summary.saldo >= 0 ? "text-[#a3e635]" : "text-red-400"}`}
+              className={`text-2xl font-extrabold tracking-tight ${summary.saldo >= 0 ? "text-accent-500" : "text-danger-500"}`}
             >
               {formatCurrency(summary.saldo)}
             </p>
-            <p className="text-xs text-[#6b7280] mt-1">
+            <p className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>
               {summary.saldo >= 0 ? "Saldo positivo" : "Saldo negativo"}
             </p>
           </div>
 
-          <div className="bg-[#1a1d2e] rounded-2xl p-5 border border-[#2a2d3e] hover:border-[#353849] transition-colors">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-[#a1a7b8]">
+          <div className="stat-card stat-card-warn">
+            <div className="flex items-center justify-between mb-4">
+              <span
+                className="text-sm font-medium"
+                style={{ color: "var(--text-muted)" }}
+              >
                 Pendentes
               </span>
-              <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center">
-                <Clock size={20} className="text-amber-400" />
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ background: "rgba(249, 131, 7, 0.1)" }}
+              >
+                <Clock size={18} className="text-warn-500" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-white">
+            <p
+              className="text-2xl font-extrabold tracking-tight"
+              style={{ color: "var(--text-primary)" }}
+            >
               {formatCurrency(summary.despesas_pendentes)}
             </p>
-            <p className="text-xs text-[#6b7280] mt-1">
+            <p className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>
               {formatCurrency(summary.despesas_pagas)} já pagas
             </p>
           </div>
@@ -238,113 +289,117 @@ export default function DashboardPage() {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Evolução Receitas vs Despesas */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-          <h3 className="text-base font-bold text-slate-800 mb-4">
-            Evolução Receitas vs Despesas
-          </h3>
+        <div className="glass-card p-6">
+          <h3 className="section-title mb-5">Receitas vs Despesas</h3>
           {evolucao.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={evolucao}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2a2d3e" />
+              <BarChart data={evolucao} barGap={4}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="var(--border-subtle)"
+                  vertical={false}
+                />
                 <XAxis
                   dataKey="mes"
-                  tick={{ fontSize: 12, fill: "#6b7280" }}
-                  stroke="#2a2d3e"
+                  tick={{ fontSize: 12 }}
+                  stroke="var(--border-subtle)"
+                  tickLine={false}
+                  axisLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 12, fill: "#6b7280" }}
-                  stroke="#2a2d3e"
+                  tick={{ fontSize: 12 }}
+                  stroke="var(--border-subtle)"
+                  tickLine={false}
+                  axisLine={false}
                   tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`}
                 />
-                <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{
-                    borderRadius: "12px",
-                    border: "1px solid #2a2d3e",
-                    backgroundColor: "#1a1d2e",
-                    color: "#f0f2f5",
-                  }}
-                  labelStyle={{ color: "#a1a7b8" }}
-                />
-                <Legend wrapperStyle={{ color: "#a1a7b8" }} />
+                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <Legend />
                 <Bar
                   dataKey="receitas"
                   name="Receitas"
-                  fill="#a3e635"
-                  radius={[6, 6, 0, 0]}
+                  fill="#17b364"
+                  radius={[8, 8, 0, 0]}
+                  barSize={24}
                 />
                 <Bar
                   dataKey="despesas"
                   name="Despesas"
-                  fill="#ef4444"
-                  radius={[6, 6, 0, 0]}
+                  fill="#f93a4a"
+                  radius={[8, 8, 0, 0]}
+                  barSize={24}
                 />
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-[300px] text-slate-400">
+            <div
+              className="flex items-center justify-center h-[300px]"
+              style={{ color: "var(--text-muted)" }}
+            >
               Sem dados para exibir
             </div>
           )}
         </div>
 
-        {/* Evolução do Saldo */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-          <h3 className="text-base font-bold text-slate-800 mb-4">
-            Evolução do Saldo
-          </h3>
+        <div className="glass-card p-6">
+          <h3 className="section-title mb-5">Evolução do Saldo</h3>
           {evolucao.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={evolucao}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2a2d3e" />
+              <AreaChart data={evolucao}>
+                <defs>
+                  <linearGradient id="saldoGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3366ff" stopOpacity={0.2} />
+                    <stop offset="100%" stopColor="#3366ff" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="var(--border-subtle)"
+                  vertical={false}
+                />
                 <XAxis
                   dataKey="mes"
-                  tick={{ fontSize: 12, fill: "#6b7280" }}
-                  stroke="#2a2d3e"
+                  tick={{ fontSize: 12 }}
+                  stroke="var(--border-subtle)"
+                  tickLine={false}
+                  axisLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 12, fill: "#6b7280" }}
-                  stroke="#2a2d3e"
+                  tick={{ fontSize: 12 }}
+                  stroke="var(--border-subtle)"
+                  tickLine={false}
+                  axisLine={false}
                   tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`}
                 />
-                <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{
-                    borderRadius: "12px",
-                    border: "1px solid #2a2d3e",
-                    backgroundColor: "#1a1d2e",
-                    color: "#f0f2f5",
-                  }}
-                  labelStyle={{ color: "#a1a7b8" }}
-                />
-                <Legend wrapperStyle={{ color: "#a1a7b8" }} />
-                <Line
+                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <Area
                   type="monotone"
                   dataKey="saldo"
                   name="Saldo"
-                  stroke="#a3e635"
-                  strokeWidth={3}
-                  dot={{ fill: "#a3e635", strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6 }}
+                  stroke="#3366ff"
+                  strokeWidth={2.5}
+                  fill="url(#saldoGrad)"
+                  dot={{ fill: "#3366ff", strokeWidth: 0, r: 4 }}
+                  activeDot={{ r: 6, strokeWidth: 2, stroke: "#fff" }}
                 />
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-[300px] text-slate-400">
+            <div
+              className="flex items-center justify-center h-[300px]"
+              style={{ color: "var(--text-muted)" }}
+            >
               Sem dados para exibir
             </div>
           )}
         </div>
       </div>
 
-      {/* Second Row: Categories and Alerts */}
+      {/* Second Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Categorias Pie */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-          <h3 className="text-base font-bold text-slate-800 mb-4">
-            Despesas por Categoria
-          </h3>
+        {/* Categorias */}
+        <div className="glass-card p-6">
+          <h3 className="section-title mb-5">Despesas por Categoria</h3>
           {categorias.length > 0 ? (
             <>
               <ResponsiveContainer width="100%" height={200}>
@@ -353,11 +408,12 @@ export default function DashboardPage() {
                     data={categorias}
                     cx="50%"
                     cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
+                    innerRadius={55}
+                    outerRadius={85}
                     paddingAngle={3}
                     dataKey="total"
                     nameKey="categoria"
+                    strokeWidth={0}
                   >
                     {categorias.map((_, index) => (
                       <Cell key={index} fill={COLORS[index % COLORS.length]} />
@@ -368,24 +424,29 @@ export default function DashboardPage() {
                   />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="space-y-2 mt-4 max-h-[180px] overflow-y-auto scrollbar-thin">
+              <div className="space-y-2.5 mt-4 max-h-[180px] overflow-y-auto scrollbar-thin">
                 {categorias.map((cat, i) => (
                   <div
                     key={cat.categoria}
                     className="flex items-center justify-between text-sm"
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                       <div
-                        className="w-3 h-3 rounded-full"
+                        className="w-2.5 h-2.5 rounded-full"
                         style={{ backgroundColor: COLORS[i % COLORS.length] }}
                       />
-                      <span className="text-slate-600">{cat.categoria}</span>
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        {cat.categoria}
+                      </span>
                     </div>
-                    <div className="text-right">
-                      <span className="font-medium text-slate-700">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="font-semibold"
+                        style={{ color: "var(--text-primary)" }}
+                      >
                         {formatCurrency(cat.total)}
                       </span>
-                      <span className="text-slate-400 ml-2 text-xs">
+                      <span className="badge badge-neutral text-[10px]">
                         {cat.percentual}%
                       </span>
                     </div>
@@ -394,16 +455,19 @@ export default function DashboardPage() {
               </div>
             </>
           ) : (
-            <div className="flex items-center justify-center h-[300px] text-slate-400">
+            <div
+              className="flex items-center justify-center h-[300px]"
+              style={{ color: "var(--text-muted)" }}
+            >
               Sem dados para exibir
             </div>
           )}
         </div>
 
-        {/* Alertas de Vencimento */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-          <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <AlertTriangle className="text-red-500" size={20} />
+        {/* Alertas */}
+        <div className="glass-card p-6">
+          <h3 className="section-title mb-5 flex items-center gap-2">
+            <AlertTriangle className="text-danger-500" size={18} />
             Alertas de Vencimento
           </h3>
           {vencimentos.filter(
@@ -422,151 +486,190 @@ export default function DashboardPage() {
                 .map((v) => (
                   <div
                     key={v.id}
-                    className={`p-3 rounded-lg border-l-4 ${
-                      v.dias_restantes <= 0
-                        ? "bg-red-50 border-red-500"
-                        : v.dias_restantes <= 1
-                          ? "bg-orange-50 border-orange-500"
-                          : "bg-amber-50 border-amber-500"
-                    }`}
+                    className="p-3 rounded-xl"
+                    style={{
+                      background:
+                        v.dias_restantes <= 0
+                          ? "rgba(249,58,74,0.06)"
+                          : v.dias_restantes <= 1
+                            ? "rgba(249,131,7,0.06)"
+                            : "rgba(249,165,7,0.06)",
+                      borderLeft: `3px solid ${v.dias_restantes <= 0 ? "#f93a4a" : v.dias_restantes <= 1 ? "#f98307" : "#ffa520"}`,
+                    }}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-medium text-slate-800 text-sm">
+                      <span
+                        className="font-semibold text-sm"
+                        style={{ color: "var(--text-primary)" }}
+                      >
                         {v.descricao}
                       </span>
-                      <span className="font-bold text-slate-700">
+                      <span
+                        className="font-bold text-sm"
+                        style={{ color: "var(--text-primary)" }}
+                      >
                         {formatCurrency(v.valor)}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-xs text-slate-500">
+                    <div className="flex items-center justify-between mt-1.5">
+                      <span
+                        className="text-xs"
+                        style={{ color: "var(--text-muted)" }}
+                      >
                         {v.categoria}
                       </span>
                       <span
-                        className={`text-xs font-medium ${
-                          v.dias_restantes <= 0
-                            ? "text-red-600"
-                            : v.dias_restantes <= 1
-                              ? "text-orange-600"
-                              : "text-amber-600"
-                        }`}
+                        className={`badge ${v.dias_restantes <= 0 ? "badge-danger" : "badge-warn"}`}
                       >
                         {v.dias_restantes <= 0
                           ? "Vencida!"
-                          : `${v.dias_restantes} dia(s)`}
+                          : `${v.dias_restantes}d`}
                       </span>
                     </div>
                   </div>
                 ))}
-              {vencimentos.filter(
-                (v) =>
-                  v.dias_restantes <= 3 &&
-                  !v.descricao.toLowerCase().includes("pago"),
-              ).length > 5 && (
-                <p className="text-xs text-slate-400 text-center mt-2">
-                  +
-                  {vencimentos.filter(
-                    (v) =>
-                      v.dias_restantes <= 3 &&
-                      !v.descricao.toLowerCase().includes("pago"),
-                  ).length - 5}{" "}
-                  mais alertas...
-                </p>
-              )}
             </div>
           ) : (
-            <div className="flex items-center justify-center h-[200px] text-slate-400">
+            <div
+              className="flex items-center justify-center h-[200px]"
+              style={{ color: "var(--text-muted)" }}
+            >
               <div className="text-center">
                 <CheckCircle2
                   size={32}
-                  className="mx-auto mb-2 text-emerald-500"
+                  className="mx-auto mb-2 text-accent-500"
                 />
-                <p className="text-sm">Nenhum alerta ativo</p>
+                <p className="text-sm font-medium">Nenhum alerta ativo</p>
               </div>
             </div>
           )}
         </div>
 
-        {/* Resumo do Mês Atual */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-          <h3 className="text-base font-bold text-slate-800 mb-4">
-            Resumo do Mês
-          </h3>
+        {/* Resumo */}
+        <div className="glass-card p-6">
+          <h3 className="section-title mb-5">Resumo do Mês</h3>
           {summary ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <TrendingUp size={16} className="text-emerald-600" />
-                  <span className="text-sm font-medium text-emerald-700">
+            <div className="space-y-3">
+              <div
+                className="flex items-center justify-between p-3.5 rounded-xl"
+                style={{ background: "rgba(23,179,100,0.06)" }}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ background: "rgba(23,179,100,0.15)" }}
+                  >
+                    <TrendingUp size={14} className="text-accent-500" />
+                  </div>
+                  <span className="text-sm font-medium text-accent-600">
                     Receitas
                   </span>
                 </div>
-                <span className="font-bold text-emerald-600">
+                <span className="font-bold text-accent-600">
                   {formatCurrency(summary.total_receitas)}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <TrendingDown size={16} className="text-red-600" />
-                  <span className="text-sm font-medium text-red-700">
+              <div
+                className="flex items-center justify-between p-3.5 rounded-xl"
+                style={{ background: "rgba(249,58,74,0.06)" }}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ background: "rgba(249,58,74,0.15)" }}
+                  >
+                    <TrendingDown size={14} className="text-danger-500" />
+                  </div>
+                  <span className="text-sm font-medium text-danger-600">
                     Despesas
                   </span>
                 </div>
-                <span className="font-bold text-red-600">
+                <span className="font-bold text-danger-600">
                   {formatCurrency(summary.total_despesas)}
                 </span>
               </div>
 
               <div
-                className={`flex items-center justify-between p-3 rounded-lg ${
-                  summary.saldo >= 0 ? "bg-blue-50" : "bg-orange-50"
-                }`}
+                className="flex items-center justify-between p-3.5 rounded-xl"
+                style={{
+                  background:
+                    summary.saldo >= 0
+                      ? "rgba(51,102,255,0.06)"
+                      : "rgba(249,131,7,0.06)",
+                }}
               >
-                <div className="flex items-center gap-2">
-                  <Wallet
-                    size={16}
-                    className={
-                      summary.saldo >= 0 ? "text-blue-600" : "text-orange-600"
-                    }
-                  />
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{
+                      background:
+                        summary.saldo >= 0
+                          ? "rgba(51,102,255,0.15)"
+                          : "rgba(249,131,7,0.15)",
+                    }}
+                  >
+                    <Wallet
+                      size={14}
+                      className={
+                        summary.saldo >= 0 ? "text-brand-500" : "text-warn-500"
+                      }
+                    />
+                  </div>
                   <span
-                    className={`text-sm font-medium ${
-                      summary.saldo >= 0 ? "text-blue-700" : "text-orange-700"
-                    }`}
+                    className={`text-sm font-medium ${summary.saldo >= 0 ? "text-brand-600" : "text-warn-600"}`}
                   >
                     Saldo
                   </span>
                 </div>
                 <span
-                  className={`font-bold ${
-                    summary.saldo >= 0 ? "text-blue-600" : "text-orange-600"
-                  }`}
+                  className={`font-bold ${summary.saldo >= 0 ? "text-brand-600" : "text-warn-600"}`}
                 >
                   {formatCurrency(summary.saldo)}
                 </span>
               </div>
 
-              <div className="pt-2 border-t border-slate-200">
-                <div className="text-xs text-slate-500 text-center">
-                  {summary.despesas_pagas_count} de{" "}
-                  {summary.total_despesas_count} despesas pagas
+              <div
+                className="pt-3 mt-1"
+                style={{ borderTop: "1px solid var(--border-subtle)" }}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span
+                    className="text-xs font-medium"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Despesas pagas
+                  </span>
+                  <span
+                    className="text-xs font-bold"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {summary.despesas_pagas_count}/
+                    {summary.total_despesas_count}
+                  </span>
                 </div>
-                <div className="w-full bg-slate-200 rounded-full h-2 mt-2">
+                <div
+                  className="w-full rounded-full h-2"
+                  style={{ background: "var(--bg-elevated)" }}
+                >
                   <div
-                    className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+                    className="h-2 rounded-full transition-all duration-500"
                     style={{
                       width:
                         summary.total_despesas_count > 0
                           ? `${(summary.despesas_pagas_count / summary.total_despesas_count) * 100}%`
                           : "0%",
+                      background: "linear-gradient(90deg, #3366ff, #8b5cf6)",
                     }}
                   />
                 </div>
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-center h-[200px] text-slate-400">
+            <div
+              className="flex items-center justify-center h-[200px]"
+              style={{ color: "var(--text-muted)" }}
+            >
               Carregando...
             </div>
           )}
@@ -574,28 +677,41 @@ export default function DashboardPage() {
       </div>
 
       {/* Próximos Vencimentos */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-        <h3 className="text-base font-bold text-slate-800 mb-4">
-          Próximos Vencimentos
-        </h3>
+      <div className="glass-card p-6">
+        <h3 className="section-title mb-5">Próximos Vencimentos</h3>
         {vencimentos.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-100">
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th
+                    className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     Descrição
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">
+                  <th
+                    className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     Categoria
                   </th>
-                  <th className="text-right py-3 px-4 text-xs font-semibold text-slate-400 uppercase">
+                  <th
+                    className="text-right py-3 px-4 text-xs font-bold uppercase tracking-wider"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     Valor
                   </th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400 uppercase">
+                  <th
+                    className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     Vencimento
                   </th>
-                  <th className="text-center py-3 px-4 text-xs font-semibold text-slate-400 uppercase">
+                  <th
+                    className="text-center py-3 px-4 text-xs font-bold uppercase tracking-wider"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     Status
                   </th>
                 </tr>
@@ -604,35 +720,44 @@ export default function DashboardPage() {
                 {vencimentos.map((v) => (
                   <tr
                     key={v.id}
-                    className="border-b border-slate-50 hover:bg-slate-50 transition-colors"
+                    className="transition-colors"
+                    style={{ borderBottom: "1px solid var(--border-subtle)" }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background =
+                        "var(--bg-card-hover)")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = "transparent")
+                    }
                   >
-                    <td className="py-3 px-4 text-sm font-medium text-slate-700">
+                    <td
+                      className="py-3.5 px-4 text-sm font-semibold"
+                      style={{ color: "var(--text-primary)" }}
+                    >
                       {v.descricao}
                     </td>
-                    <td className="py-3 px-4">
-                      <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full">
-                        {v.categoria}
-                      </span>
+                    <td className="py-3.5 px-4">
+                      <span className="badge badge-neutral">{v.categoria}</span>
                     </td>
-                    <td className="py-3 px-4 text-sm font-semibold text-slate-700 text-right">
+                    <td
+                      className="py-3.5 px-4 text-sm font-bold text-right"
+                      style={{ color: "var(--text-primary)" }}
+                    >
                       {formatCurrency(v.valor)}
                     </td>
-                    <td className="py-3 px-4 text-sm text-slate-600">
+                    <td
+                      className="py-3.5 px-4 text-sm"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
                       {formatDate(v.data_vencimento)}
                     </td>
-                    <td className="py-3 px-4 text-center">
+                    <td className="py-3.5 px-4 text-center">
                       <span
-                        className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${
-                          v.status === "URGENTE"
-                            ? "bg-red-50 text-red-700"
-                            : v.status === "PROXIMO"
-                              ? "bg-amber-50 text-amber-700"
-                              : "bg-blue-50 text-blue-700"
-                        }`}
+                        className={`badge ${v.status === "URGENTE" ? "badge-danger" : v.status === "PROXIMO" ? "badge-warn" : "badge-info"}`}
                       >
-                        {v.status === "URGENTE" && <AlertTriangle size={12} />}
-                        {v.status === "PROXIMO" && <Clock size={12} />}
-                        {v.status === "NORMAL" && <CheckCircle2 size={12} />}
+                        {v.status === "URGENTE" && <AlertTriangle size={11} />}
+                        {v.status === "PROXIMO" && <Clock size={11} />}
+                        {v.status === "NORMAL" && <CheckCircle2 size={11} />}
                         {v.dias_restantes}d
                       </span>
                     </td>
@@ -642,7 +767,10 @@ export default function DashboardPage() {
             </table>
           </div>
         ) : (
-          <p className="text-sm text-slate-400 text-center py-8">
+          <p
+            className="text-sm text-center py-8"
+            style={{ color: "var(--text-muted)" }}
+          >
             Nenhum vencimento próximo
           </p>
         )}

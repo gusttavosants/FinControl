@@ -186,9 +186,23 @@ export default function ChatWidget() {
     <>
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 w-[400px] max-w-[calc(100vw-2rem)] h-[560px] max-h-[calc(100vh-8rem)] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col z-50 animate-in slide-in-from-bottom-4">
+        <div
+          className="fixed bottom-24 right-6 w-[400px] max-w-[calc(100vw-2rem)] h-[560px] max-h-[calc(100vh-8rem)] flex flex-col z-50 animate-in slide-in-from-bottom-4 overflow-hidden"
+          style={{
+            background: "var(--bg-card)",
+            border: "1px solid var(--border-subtle)",
+            borderRadius: "var(--radius-card)",
+            boxShadow: "0 24px 80px rgba(0,0,0,0.18)",
+          }}
+        >
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700 bg-gradient-to-r from-primary-600 to-primary-700 rounded-t-2xl">
+          <div
+            className="flex items-center justify-between px-5 py-4"
+            style={{
+              borderBottom: "1px solid rgba(255,255,255,0.08)",
+              background: "linear-gradient(135deg, #3366ff, #8b5cf6)",
+            }}
+          >
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
                 <Sparkles className="text-white" size={18} />
@@ -221,16 +235,25 @@ export default function ChatWidget() {
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full text-center px-4">
-                <div className="w-16 h-16 bg-primary-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-4">
-                  <Bot
-                    className="text-primary-600 dark:text-primary-400"
-                    size={32}
-                  />
+                <div
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--border-subtle)",
+                  }}
+                >
+                  <Bot style={{ color: "var(--brand)" }} size={32} />
                 </div>
-                <h4 className="text-slate-800 dark:text-slate-200 font-semibold mb-1">
+                <h4
+                  className="font-semibold mb-1"
+                  style={{ color: "var(--text-primary)" }}
+                >
                   Olá! Sou o FinBot 👋
                 </h4>
-                <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
+                <p
+                  className="text-sm mb-6"
+                  style={{ color: "var(--text-muted)" }}
+                >
                   Posso te ajudar a gerenciar suas finanças. Experimente:
                 </p>
                 <div className="grid grid-cols-1 gap-2 w-full">
@@ -238,7 +261,21 @@ export default function ChatWidget() {
                     <button
                       key={i}
                       onClick={() => handleSend(s)}
-                      className="text-left text-xs px-3 py-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-primary-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary-700 dark:hover:text-primary-400 rounded-xl border border-slate-100 dark:border-slate-700 transition-all"
+                      className="text-left text-xs px-3 py-2.5 rounded-xl transition-all"
+                      style={{
+                        background: "var(--bg-elevated)",
+                        border: "1px solid var(--border-subtle)",
+                        color: "var(--text-secondary)",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background =
+                          "var(--bg-card-hover)";
+                        e.currentTarget.style.color = "var(--text-primary)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "var(--bg-elevated)";
+                        e.currentTarget.style.color = "var(--text-secondary)";
+                      }}
                     >
                       {s}
                     </button>
@@ -253,27 +290,48 @@ export default function ChatWidget() {
                 className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 {msg.role === "assistant" && (
-                  <div className="w-7 h-7 rounded-lg bg-primary-100 dark:bg-slate-700 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Bot
-                      size={14}
-                      className="text-primary-600 dark:text-primary-400"
-                    />
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                    style={{
+                      background: "rgba(51,102,255,0.12)",
+                      color: "var(--brand)",
+                    }}
+                  >
+                    <Bot size={14} style={{ color: "var(--brand)" }} />
                   </div>
                 )}
                 <div
                   className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
                     msg.role === "user"
-                      ? "bg-primary-600 text-white rounded-br-md"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-bl-md"
+                      ? "text-white rounded-br-md"
+                      : "rounded-bl-md"
                   }`}
+                  style={
+                    msg.role === "user"
+                      ? {
+                          background:
+                            "linear-gradient(135deg, #3366ff, #8b5cf6)",
+                        }
+                      : {
+                          background: "var(--bg-elevated)",
+                          color: "var(--text-primary)",
+                          border: "1px solid var(--border-subtle)",
+                        }
+                  }
                 >
                   {formatMessage(msg.content)}
                 </div>
                 {msg.role === "user" && (
-                  <div className="w-7 h-7 rounded-lg bg-slate-200 dark:bg-slate-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                    style={{
+                      background: "var(--bg-elevated)",
+                      border: "1px solid var(--border-subtle)",
+                    }}
+                  >
                     <User
                       size={14}
-                      className="text-slate-600 dark:text-slate-300"
+                      style={{ color: "var(--text-secondary)" }}
                     />
                   </div>
                 )}
@@ -282,19 +340,29 @@ export default function ChatWidget() {
 
             {loading && (
               <div className="flex gap-2.5 justify-start">
-                <div className="w-7 h-7 rounded-lg bg-primary-100 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
-                  <Bot
-                    size={14}
-                    className="text-primary-600 dark:text-primary-400"
-                  />
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: "rgba(51,102,255,0.12)" }}
+                >
+                  <Bot size={14} style={{ color: "var(--brand)" }} />
                 </div>
-                <div className="bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-2xl rounded-bl-md">
+                <div
+                  className="px-4 py-3 rounded-2xl rounded-bl-md"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--border-subtle)",
+                  }}
+                >
                   <div className="flex items-center gap-1.5">
                     <Loader2
                       size={14}
-                      className="animate-spin text-primary-500"
+                      className="animate-spin"
+                      style={{ color: "var(--brand)" }}
                     />
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                    <span
+                      className="text-xs"
+                      style={{ color: "var(--text-muted)" }}
+                    >
                       Pensando...
                     </span>
                   </div>
@@ -306,7 +374,10 @@ export default function ChatWidget() {
           </div>
 
           {/* Input */}
-          <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-700">
+          <div
+            className="px-4 py-3"
+            style={{ borderTop: "1px solid var(--border-subtle)" }}
+          >
             <input
               ref={fileInputRef}
               type="file"
@@ -314,11 +385,18 @@ export default function ChatWidget() {
               onChange={handleFileUpload}
               className="hidden"
             />
-            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-1 border border-slate-200 dark:border-slate-600 focus-within:border-primary-400 dark:focus-within:border-primary-500 transition-colors">
+            <div
+              className="flex items-center gap-2 rounded-xl px-3 py-1 transition-colors"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--border-subtle)",
+              }}
+            >
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={loading}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                className="p-1.5 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                style={{ color: "var(--text-muted)" }}
                 title="Importar planilha (.xlsx, .xls, .csv)"
               >
                 <Paperclip size={14} />
@@ -331,17 +409,24 @@ export default function ChatWidget() {
                 onKeyDown={handleKeyDown}
                 placeholder="Digite ou anexe planilha..."
                 disabled={loading}
-                className="flex-1 bg-transparent text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 outline-none py-2"
+                className="flex-1 bg-transparent text-sm outline-none py-2"
+                style={{ color: "var(--text-primary)" }}
               />
               <button
                 onClick={() => handleSend()}
                 disabled={!input.trim() || loading}
-                className="p-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                className="p-1.5 rounded-lg text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                style={{
+                  background: "linear-gradient(135deg, #3366ff, #8b5cf6)",
+                }}
               >
                 <Send size={14} />
               </button>
             </div>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center mt-1.5">
+            <p
+              className="text-[10px] text-center mt-1.5"
+              style={{ color: "var(--text-muted)" }}
+            >
               FinBot • As ações são executadas em tempo real
             </p>
           </div>
@@ -354,8 +439,13 @@ export default function ChatWidget() {
         className={`fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg flex items-center justify-center z-50 transition-all duration-300 hover:scale-105 active:scale-95 ${
           isOpen
             ? "bg-slate-600 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600"
-            : "bg-gradient-to-br from-primary-500 to-primary-700 hover:from-primary-600 hover:to-primary-800"
+            : ""
         }`}
+        style={
+          isOpen
+            ? undefined
+            : { background: "linear-gradient(135deg, #3366ff, #8b5cf6)" }
+        }
       >
         {isOpen ? (
           <X className="text-white" size={22} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { MESES } from "@/lib/utils";
 
 interface MonthSelectorProps {
@@ -25,21 +25,41 @@ export default function MonthSelector({
   };
 
   return (
-    <div className="flex items-center gap-3 bg-[#1a1d2e] rounded-xl px-4 py-2 border border-[#2a2d3e]">
+    <div
+      className="flex items-center gap-2 rounded-xl px-3 py-2"
+      style={{
+        background: "var(--bg-card)",
+        border: "1px solid var(--border-subtle)",
+      }}
+    >
+      <Calendar size={14} style={{ color: "var(--brand)" }} />
       <button
         onClick={prev}
-        className="p-1 hover:bg-[#242740] rounded-lg transition-colors"
+        className="p-1 rounded-lg transition-colors"
+        style={{ color: "var(--text-muted)" }}
+        onMouseEnter={(e) =>
+          (e.currentTarget.style.background = "var(--bg-elevated)")
+        }
+        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >
-        <ChevronLeft size={18} className="text-[#a1a7b8]" />
+        <ChevronLeft size={16} />
       </button>
-      <span className="text-sm font-semibold text-white min-w-[140px] text-center">
+      <span
+        className="text-sm font-semibold min-w-[130px] text-center"
+        style={{ color: "var(--text-primary)" }}
+      >
         {MESES[mes - 1]} {ano}
       </span>
       <button
         onClick={next}
-        className="p-1 hover:bg-[#242740] rounded-lg transition-colors"
+        className="p-1 rounded-lg transition-colors"
+        style={{ color: "var(--text-muted)" }}
+        onMouseEnter={(e) =>
+          (e.currentTarget.style.background = "var(--bg-elevated)")
+        }
+        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >
-        <ChevronRight size={18} className="text-[#a1a7b8]" />
+        <ChevronRight size={16} />
       </button>
     </div>
   );
