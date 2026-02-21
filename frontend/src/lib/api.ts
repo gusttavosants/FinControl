@@ -228,6 +228,30 @@ export const sharedAccountAPI = {
     fetchAPI(`/shared-account/${accountId}`, { method: "DELETE" }),
 };
 
+// Investimentos
+export const investimentosAPI = {
+  listar: () => fetchAPI("/investimentos"),
+  criar: (data: any) =>
+    fetchAPI("/investimentos", { method: "POST", body: JSON.stringify(data) }),
+  atualizar: (id: number, data: any) =>
+    fetchAPI(`/investimentos/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  deletar: (id: number) =>
+    fetchAPI(`/investimentos/${id}`, { method: "DELETE" }),
+  resumo: () => fetchAPI("/investimentos/resumo"),
+};
+
+// Cotações (BRAPI proxy)
+export const cotacoesAPI = {
+  cotacao: (ticker: string) => fetchAPI(`/cotacao/${ticker}`),
+  historico: (ticker: string, range: string = "1mo") =>
+    fetchAPI(`/cotacao/${ticker}/historico?range=${range}`),
+  batch: (tickers: string[]) =>
+    fetchAPI(`/cotacoes/batch?tickers=${tickers.join(",")}`),
+};
+
 // Notificações
 export const notificationsAPI = {
   listar: () => fetchAPI("/notifications"),

@@ -8,7 +8,7 @@ from typing import List, Optional
 from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from database import engine, get_db, Base
-from models import Receita, Despesa, OrcamentoCategoria, Meta, User, Notification, SharedAccount
+from models import Receita, Despesa, OrcamentoCategoria, Meta, User, Notification, SharedAccount, Investimento
 import os
 from dotenv import load_dotenv
 
@@ -18,6 +18,7 @@ Base.metadata.create_all(bind=engine)
 import pandas as pd
 import io
 import re
+import httpx
 from schemas import (
     ReceitaCreate, ReceitaUpdate, ReceitaResponse,
     DespesaCreate, DespesaUpdate, DespesaResponse,
@@ -27,6 +28,7 @@ from schemas import (
     UserRegister, UserLogin, UserResponse, TokenResponse,
     ChatRequest, ChatResponse, NotificationCreate, NotificationResponse,
     SharedAccountInvite, SharedAccountResponse,
+    InvestimentoCreate, InvestimentoUpdate, InvestimentoResponse,
 )
 from passlib.context import CryptContext
 from jose import JWTError, jwt
@@ -1681,8 +1683,157 @@ def global_search(
             "pago": d.pago,
         })
 
+    investimentos = db.query(Investimento).filter(
+        (Investimento.user_id.in_(user_ids)) | (Investimento.user_id == None),
+        Investimento.ticker.ilike(query) | Investimento.observacoes.ilike(query)
+    ).limit(10).all()
+
+    for inv in investimentos:
+        results.append({
+            "id": inv.id,
+            "tipo": "investimento",
+            "descricao": inv.ticker,
+            "categoria": inv.tipo,
+            "valor": inv.quantidade * inv.preco_medio,
+            "data": inv.data_compra.isoformat() if inv.data_compra else None,
+            "quantidade": inv.quantidade,
+            "preco_medio": inv.preco_medio,
+        })
+
     results.sort(key=lambda x: x.get("data") or "", reverse=True)
     return results
+
+
+# ===================== INVESTIMENTOS =====================
+
+BRAPI_BASE = "https://brapi.dev/api"
+
+@app.get("/api/investimentos", response_model=List[InvestimentoResponse])
+def listar_investimentos(user: User = Depends(require_user), db: Session = Depends(get_db)):
+    user_ids = get_account_user_ids(user, db)
+    return db.query(Investimento).filter(
+        (Investimento.user_id.in_(user_ids)) | (Investimento.user_id == None)
+    ).order_by(Investimento.data_compra.desc()).all()
+
+
+@app.post("/api/investimentos", response_model=InvestimentoResponse)
+def criar_investimento(data: InvestimentoCreate, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    inv = Investimento(
+        user_id=user.id,
+        ticker=data.ticker.upper().strip(),
+        tipo=data.tipo,
+        quantidade=data.quantidade,
+        preco_medio=data.preco_medio,
+        data_compra=data.data_compra,
+        observacoes=data.observacoes,
+    )
+    db.add(inv)
+    db.commit()
+    db.refresh(inv)
+    return inv
+
+
+@app.put("/api/investimentos/{inv_id}", response_model=InvestimentoResponse)
+def atualizar_investimento(inv_id: int, data: InvestimentoUpdate, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    user_ids = get_account_user_ids(user, db)
+    inv = db.query(Investimento).filter(
+        Investimento.id == inv_id,
+        (Investimento.user_id.in_(user_ids)) | (Investimento.user_id == None)
+    ).first()
+    if not inv:
+        raise HTTPException(status_code=404, detail="Investimento não encontrado")
+    for field, value in data.dict(exclude_unset=True).items():
+        if value is not None:
+            if field == "ticker":
+                value = value.upper().strip()
+            setattr(inv, field, value)
+    db.commit()
+    db.refresh(inv)
+    return inv
+
+
+@app.delete("/api/investimentos/{inv_id}", status_code=204)
+def deletar_investimento(inv_id: int, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    user_ids = get_account_user_ids(user, db)
+    inv = db.query(Investimento).filter(
+        Investimento.id == inv_id,
+        (Investimento.user_id.in_(user_ids)) | (Investimento.user_id == None)
+    ).first()
+    if not inv:
+        raise HTTPException(status_code=404, detail="Investimento não encontrado")
+    db.delete(inv)
+    db.commit()
+    return None
+
+
+@app.get("/api/cotacao/{ticker}")
+async def get_cotacao(ticker: str):
+    """Proxy para BRAPI - busca cotação atual de um ticker"""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(f"{BRAPI_BASE}/quote/{ticker.upper()}")
+            if resp.status_code != 200:
+                raise HTTPException(status_code=resp.status_code, detail="Erro ao buscar cotação")
+            return resp.json()
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Timeout ao buscar cotação")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro: {str(e)}")
+
+
+@app.get("/api/cotacao/{ticker}/historico")
+async def get_historico(ticker: str, range: str = "1mo"):
+    """Proxy para BRAPI - busca histórico de preços"""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(f"{BRAPI_BASE}/quote/{ticker.upper()}", params={"range": range, "interval": "1d"})
+            if resp.status_code != 200:
+                raise HTTPException(status_code=resp.status_code, detail="Erro ao buscar histórico")
+            return resp.json()
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Timeout ao buscar histórico")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro: {str(e)}")
+
+
+@app.get("/api/cotacoes/batch")
+async def get_cotacoes_batch(tickers: str = Query(..., description="Tickers separados por vírgula")):
+    """Busca cotações de múltiplos tickers de uma vez"""
+    try:
+        ticker_list = tickers.upper().strip()
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(f"{BRAPI_BASE}/quote/{ticker_list}")
+            if resp.status_code != 200:
+                raise HTTPException(status_code=resp.status_code, detail="Erro ao buscar cotações")
+            return resp.json()
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Timeout ao buscar cotações")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro: {str(e)}")
+
+
+@app.get("/api/investimentos/resumo")
+def resumo_investimentos(user: User = Depends(require_user), db: Session = Depends(get_db)):
+    """Retorna resumo da carteira de investimentos"""
+    user_ids = get_account_user_ids(user, db)
+    investimentos = db.query(Investimento).filter(
+        (Investimento.user_id.in_(user_ids)) | (Investimento.user_id == None)
+    ).all()
+
+    total_investido = sum(i.quantidade * i.preco_medio for i in investimentos)
+    por_tipo = {}
+    for inv in investimentos:
+        if inv.tipo not in por_tipo:
+            por_tipo[inv.tipo] = {"total_investido": 0, "quantidade_ativos": 0}
+        por_tipo[inv.tipo]["total_investido"] += inv.quantidade * inv.preco_medio
+        por_tipo[inv.tipo]["quantidade_ativos"] += 1
+
+    return {
+        "total_investido": total_investido,
+        "total_ativos": len(investimentos),
+        "por_tipo": por_tipo,
+        "tickers": list(set(i.ticker for i in investimentos)),
+    }
 
 
 if __name__ == "__main__":

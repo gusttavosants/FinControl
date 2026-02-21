@@ -12,6 +12,7 @@ import {
   Download,
   ArrowUpRight,
   ArrowDownRight,
+  Briefcase,
 } from "lucide-react";
 import {
   PieChart,
@@ -30,7 +31,13 @@ import {
   BarChart,
   Bar,
 } from "recharts";
-import { dashboardAPI, seedAPI, exportAPI } from "@/lib/api";
+import {
+  dashboardAPI,
+  seedAPI,
+  exportAPI,
+  investimentosAPI,
+  cotacoesAPI,
+} from "@/lib/api";
 import {
   formatCurrency,
   formatDate,
@@ -82,6 +89,14 @@ export default function DashboardPage() {
   const [evolucao, setEvolucao] = useState<Evolucao[]>([]);
   const [vencimentos, setVencimentos] = useState<Vencimento[]>([]);
   const [loading, setLoading] = useState(true);
+  const [investResumo, setInvestResumo] = useState<{
+    total_investido: number;
+    total_ativos: number;
+    tickers: string[];
+    valor_atual?: number;
+    lucro?: number;
+    lucro_pct?: number;
+  } | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -98,6 +113,39 @@ export default function DashboardPage() {
       setVencimentos(venc);
     } catch (e) {
       console.error(e);
+    }
+    // Load investment summary
+    try {
+      const resumo = await investimentosAPI.resumo();
+      let valorAtual = resumo.total_investido;
+      if (resumo.tickers && resumo.tickers.length > 0) {
+        try {
+          const cotacoes = await cotacoesAPI.batch(resumo.tickers);
+          if (cotacoes?.results) {
+            const invList = await investimentosAPI.listar();
+            valorAtual = 0;
+            for (const inv of invList) {
+              const cot = cotacoes.results.find(
+                (c: any) => c.symbol === inv.ticker,
+              );
+              valorAtual += cot
+                ? inv.quantidade * cot.regularMarketPrice
+                : inv.quantidade * inv.preco_medio;
+            }
+          }
+        } catch {}
+      }
+      const lucro = valorAtual - resumo.total_investido;
+      const lucroPct =
+        resumo.total_investido > 0 ? (lucro / resumo.total_investido) * 100 : 0;
+      setInvestResumo({
+        ...resumo,
+        valor_atual: valorAtual,
+        lucro,
+        lucro_pct: lucroPct,
+      });
+    } catch {
+      setInvestResumo(null);
     }
     setLoading(false);
   };
@@ -283,6 +331,136 @@ export default function DashboardPage() {
             <p className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>
               {formatCurrency(summary.despesas_pagas)} já pagas
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Patrimônio & Investimentos */}
+      {investResumo && investResumo.total_ativos > 0 && (
+        <div className="glass-card p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="section-title flex items-center gap-2">
+              <Briefcase size={18} style={{ color: "var(--brand)" }} />
+              Investimentos
+            </h3>
+            <a
+              href="/investimentos"
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+              style={{
+                color: "var(--brand)",
+                background: "var(--brand-muted)",
+              }}
+            >
+              Ver carteira →
+            </a>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div
+              className="p-4 rounded-xl"
+              style={{ background: "var(--bg-elevated)" }}
+            >
+              <p
+                className="text-xs font-medium mb-1"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Total Investido
+              </p>
+              <p
+                className="text-lg font-extrabold"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {formatCurrency(investResumo.total_investido)}
+              </p>
+            </div>
+            <div
+              className="p-4 rounded-xl"
+              style={{ background: "var(--bg-elevated)" }}
+            >
+              <p
+                className="text-xs font-medium mb-1"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Valor Atual
+              </p>
+              <p
+                className="text-lg font-extrabold"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {formatCurrency(investResumo.valor_atual || 0)}
+              </p>
+            </div>
+            <div
+              className="p-4 rounded-xl"
+              style={{ background: "var(--bg-elevated)" }}
+            >
+              <p
+                className="text-xs font-medium mb-1"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Lucro / Prejuízo
+              </p>
+              <p
+                className="text-lg font-extrabold"
+                style={{
+                  color:
+                    (investResumo.lucro || 0) >= 0
+                      ? "var(--accent)"
+                      : "var(--danger)",
+                }}
+              >
+                {(investResumo.lucro || 0) >= 0 ? "+" : ""}
+                {formatCurrency(investResumo.lucro || 0)}
+              </p>
+              <p
+                className="text-xs font-semibold"
+                style={{
+                  color:
+                    (investResumo.lucro_pct || 0) >= 0
+                      ? "var(--accent)"
+                      : "var(--danger)",
+                }}
+              >
+                {(investResumo.lucro_pct || 0) >= 0 ? "+" : ""}
+                {(investResumo.lucro_pct || 0).toFixed(2)}%
+              </p>
+            </div>
+            <div
+              className="p-4 rounded-xl"
+              style={{ background: "var(--bg-elevated)" }}
+            >
+              <p
+                className="text-xs font-medium mb-1"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Patrimônio Total
+              </p>
+              <p className="text-lg font-extrabold text-gradient">
+                {formatCurrency(
+                  (summary?.saldo || 0) + (investResumo.valor_atual || 0),
+                )}
+              </p>
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                Saldo + Investimentos
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 mt-4">
+            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+              {investResumo.total_ativos} ativo
+              {investResumo.total_ativos !== 1 ? "s" : ""} na carteira
+            </span>
+            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+              ·
+            </span>
+            <span
+              className="text-xs font-medium"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {investResumo.tickers.slice(0, 5).join(", ")}
+              {investResumo.tickers.length > 5
+                ? ` +${investResumo.tickers.length - 5}`
+                : ""}
+            </span>
           </div>
         </div>
       )}

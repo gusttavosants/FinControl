@@ -8,8 +8,15 @@ import {
   PiggyBank,
   AlertTriangle,
   CheckCircle2,
+  Briefcase,
+  TrendingUp,
 } from "lucide-react";
-import { orcamentoAPI, metasAPI, categoriasAPI } from "@/lib/api";
+import {
+  orcamentoAPI,
+  metasAPI,
+  categoriasAPI,
+  investimentosAPI,
+} from "@/lib/api";
 import { formatCurrency, getCurrentMonth, getCurrentYear } from "@/lib/utils";
 import MonthSelector from "@/components/MonthSelector";
 import Modal from "@/components/Modal";
@@ -52,6 +59,11 @@ export default function PlanejamentoPage() {
     prazo: "",
   });
 
+  const [investResumo, setInvestResumo] = useState<{
+    total_investido: number;
+    total_ativos: number;
+  } | null>(null);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -65,6 +77,12 @@ export default function PlanejamentoPage() {
       setCategorias(cats);
     } catch (e) {
       console.error(e);
+    }
+    try {
+      const resumo = await investimentosAPI.resumo();
+      setInvestResumo(resumo);
+    } catch {
+      setInvestResumo(null);
     }
     setLoading(false);
   };
@@ -329,6 +347,53 @@ export default function PlanejamentoPage() {
               </div>
             )}
           </div>
+
+          {/* ========== INVESTIMENTOS RESUMO ========== */}
+          {investResumo && investResumo.total_ativos > 0 && (
+            <div className="glass-card p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ background: "var(--brand-muted)" }}
+                  >
+                    <Briefcase size={18} style={{ color: "var(--brand)" }} />
+                  </div>
+                  <div>
+                    <p
+                      className="text-sm font-semibold"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      Carteira de Investimentos
+                    </p>
+                    <p
+                      className="text-xs"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      {investResumo.total_ativos} ativo
+                      {investResumo.total_ativos !== 1 ? "s" : ""} cadastrado
+                      {investResumo.total_ativos !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p
+                    className="text-lg font-extrabold"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {formatCurrency(investResumo.total_investido)}
+                  </p>
+                  <a
+                    href="/investimentos"
+                    className="text-xs font-semibold"
+                    style={{ color: "var(--brand)" }}
+                  >
+                    Ver detalhes →
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ========== METAS ========== */}
           <div className="space-y-4">

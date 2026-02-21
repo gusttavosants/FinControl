@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Search, X, TrendingUp, TrendingDown } from "lucide-react";
+import { Search, X, TrendingUp, TrendingDown, Briefcase } from "lucide-react";
 import { searchAPI } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
 interface SearchResult {
   id: number;
-  tipo: "receita" | "despesa";
+  tipo: "receita" | "despesa" | "investimento";
   descricao: string;
   categoria: string;
   valor: number;
@@ -72,7 +72,13 @@ export default function GlobalSearch() {
     setOpen(false);
     setQuery("");
     setResults([]);
-    router.push(result.tipo === "receita" ? "/receitas" : "/despesas");
+    router.push(
+      result.tipo === "receita"
+        ? "/receitas"
+        : result.tipo === "investimento"
+          ? "/investimentos"
+          : "/despesas",
+    );
   };
 
   if (!open) {
@@ -131,7 +137,7 @@ export default function GlobalSearch() {
             type="text"
             value={query}
             onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Buscar despesas e receitas..."
+            placeholder="Buscar despesas, receitas e investimentos..."
             className="flex-1 text-sm outline-none bg-transparent"
             style={{ color: "var(--text-primary)" }}
           />
@@ -200,12 +206,21 @@ export default function GlobalSearch() {
                       background:
                         r.tipo === "receita"
                           ? "rgba(23,179,100,0.12)"
-                          : "rgba(249,58,74,0.12)",
-                      color: r.tipo === "receita" ? "#17b364" : "#f93a4a",
+                          : r.tipo === "investimento"
+                            ? "rgba(51,102,255,0.12)"
+                            : "rgba(249,58,74,0.12)",
+                      color:
+                        r.tipo === "receita"
+                          ? "#17b364"
+                          : r.tipo === "investimento"
+                            ? "#3366ff"
+                            : "#f93a4a",
                     }}
                   >
                     {r.tipo === "receita" ? (
                       <TrendingUp size={16} />
+                    ) : r.tipo === "investimento" ? (
+                      <Briefcase size={16} />
                     ) : (
                       <TrendingDown size={16} />
                     )}
@@ -229,7 +244,12 @@ export default function GlobalSearch() {
                     <p
                       className="text-sm font-bold"
                       style={{
-                        color: r.tipo === "receita" ? "#17b364" : "#f93a4a",
+                        color:
+                          r.tipo === "receita"
+                            ? "#17b364"
+                            : r.tipo === "investimento"
+                              ? "#3366ff"
+                              : "#f93a4a",
                       }}
                     >
                       {formatCurrency(r.valor)}

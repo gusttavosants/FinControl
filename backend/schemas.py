@@ -220,6 +220,38 @@ class SharedAccountResponse(BaseModel):
 
 
 # --- Notification Schemas ---
+# --- Investimento Schemas ---
+class InvestimentoCreate(BaseModel):
+    ticker: str
+    tipo: str = "acao"
+    quantidade: float
+    preco_medio: float
+    data_compra: date
+    observacoes: Optional[str] = None
+
+
+class InvestimentoUpdate(BaseModel):
+    ticker: Optional[str] = None
+    tipo: Optional[str] = None
+    quantidade: Optional[float] = None
+    preco_medio: Optional[float] = None
+    data_compra: Optional[date] = None
+    observacoes: Optional[str] = None
+
+
+class InvestimentoResponse(BaseModel):
+    id: int
+    ticker: str
+    tipo: str
+    quantidade: float
+    preco_medio: float
+    data_compra: date
+    observacoes: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class NotificationCreate(BaseModel):
     titulo: str
     mensagem: str

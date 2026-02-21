@@ -13,6 +13,7 @@ import {
   LogOut,
   ChevronsLeft,
   Target,
+  Briefcase,
 } from "lucide-react";
 import { authAPI } from "@/lib/api";
 import { useState } from "react";
@@ -21,6 +22,7 @@ const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/receitas", label: "Receitas", icon: TrendingUp },
   { href: "/despesas", label: "Despesas", icon: TrendingDown },
+  { href: "/investimentos", label: "Investimentos", icon: Briefcase },
   { href: "/planejamento", label: "Planejamento", icon: Target },
   { href: "/relatorios", label: "Relatórios", icon: BarChart3 },
   { href: "/configuracoes", label: "Configurações", icon: Settings },

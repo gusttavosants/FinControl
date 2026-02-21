@@ -90,6 +90,21 @@ class Meta(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
+class Investimento(Base):
+    __tablename__ = "investimentos"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    ticker = Column(String(20), nullable=False)
+    tipo = Column(String(20), nullable=False, default="acao")  # acao, fii, bdr, etf
+    quantidade = Column(Float, nullable=False)
+    preco_medio = Column(Float, nullable=False)
+    data_compra = Column(Date, nullable=False)
+    observacoes = Column(Text, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
 class Notification(Base):
     __tablename__ = "notifications"
 
