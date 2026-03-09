@@ -12,6 +12,7 @@ class User(Base):
     nome = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
     senha_hash = Column(String(255), nullable=False)
+    plan = Column(String(20), nullable=False, default='free')  # free, pro, premium
     created_at = Column(DateTime, server_default=func.now())
 
 

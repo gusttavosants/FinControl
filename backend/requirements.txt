@@ -1,5 +1,5 @@
 fastapi
-uvicorn
+uvicorn[standard]
 sqlalchemy
 pydantic
 python-dateutil
@@ -12,3 +12,10 @@ pandas
 psycopg2-binary
 python-dotenv
 httpx
+pytest
+pytest-asyncio
+pytest-cov
+redis
+slowapi
+stripe
+mercadopago
