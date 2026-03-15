@@ -48,9 +48,9 @@ class Payment(Base):
     stripe_payment_intent_id = Column(String(255), nullable=True)
     mercadopago_payment_id = Column(String(255), nullable=True)
     
-    # Metadata
+    # Additional info
     description = Column(Text, nullable=True)
-    metadata = Column(Text, nullable=True)  # JSON string
+    payment_metadata = Column(Text, nullable=True)  # JSON string - renamed from 'metadata' (reserved)
     error_message = Column(Text, nullable=True)
     
     created_at = Column(DateTime, server_default=func.now())

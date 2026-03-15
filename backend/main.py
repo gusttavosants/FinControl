@@ -1707,6 +1707,7 @@ def global_search(
 # ===================== INVESTIMENTOS =====================
 
 BRAPI_BASE = "https://brapi.dev/api"
+BRAPI_TOKEN = os.environ.get("BRAPI_TOKEN", "")
 
 @app.get("/api/investimentos", response_model=List[InvestimentoResponse])
 def listar_investimentos(user: User = Depends(require_user), db: Session = Depends(get_db)):
@@ -1770,8 +1771,11 @@ def deletar_investimento(inv_id: int, user: User = Depends(require_user), db: Se
 async def get_cotacao(ticker: str):
     """Proxy para BRAPI - busca cotação atual de um ticker"""
     try:
+        params = {}
+        if BRAPI_TOKEN:
+            params["token"] = BRAPI_TOKEN
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(f"{BRAPI_BASE}/quote/{ticker.upper()}")
+            resp = await client.get(f"{BRAPI_BASE}/quote/{ticker.upper()}", params=params)
             if resp.status_code != 200:
                 raise HTTPException(status_code=resp.status_code, detail="Erro ao buscar cotação")
             return resp.json()
@@ -1785,8 +1789,11 @@ async def get_cotacao(ticker: str):
 async def get_historico(ticker: str, range: str = "1mo"):
     """Proxy para BRAPI - busca histórico de preços"""
     try:
+        params = {"range": range, "interval": "1d"}
+        if BRAPI_TOKEN:
+            params["token"] = BRAPI_TOKEN
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(f"{BRAPI_BASE}/quote/{ticker.upper()}", params={"range": range, "interval": "1d"})
+            resp = await client.get(f"{BRAPI_BASE}/quote/{ticker.upper()}", params=params)
             if resp.status_code != 200:
                 raise HTTPException(status_code=resp.status_code, detail="Erro ao buscar histórico")
             return resp.json()
@@ -1801,8 +1808,11 @@ async def get_cotacoes_batch(tickers: str = Query(..., description="Tickers sepa
     """Busca cotações de múltiplos tickers de uma vez"""
     try:
         ticker_list = tickers.upper().strip()
+        params = {}
+        if BRAPI_TOKEN:
+            params["token"] = BRAPI_TOKEN
         async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get(f"{BRAPI_BASE}/quote/{ticker_list}")
+            resp = await client.get(f"{BRAPI_BASE}/quote/{ticker_list}", params=params)
             if resp.status_code != 200:
                 raise HTTPException(status_code=resp.status_code, detail="Erro ao buscar cotações")
             return resp.json()

@@ -14,6 +14,7 @@ import {
   ChevronsLeft,
   Target,
   Briefcase,
+  Table,
 } from "lucide-react";
 import { authAPI } from "@/lib/api";
 import { useState } from "react";
@@ -25,6 +26,7 @@ const navItems = [
   { href: "/investimentos", label: "Investimentos", icon: Briefcase },
   { href: "/planejamento", label: "Planejamento", icon: Target },
   { href: "/relatorios", label: "Relatórios", icon: BarChart3 },
+  { href: "/planilhas", label: "Planilhas", icon: Table },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
@@ -42,10 +44,11 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
       {/* Mobile toggle */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2.5 rounded-xl shadow-lg text-white"
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-md shadow-sm border"
         style={{
-          background: "var(--sidebar-bg)",
-          border: "1px solid var(--border-subtle)",
+          background: "var(--bg-surface)",
+          borderColor: "var(--border-subtle)",
+          color: "var(--text-primary)"
         }}
       >
         {mobileOpen ? <ChevronsLeft size={20} /> : <Menu size={20} />}
@@ -54,7 +57,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
       {/* Overlay */}
       {mobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-30"
+          className="lg:hidden fixed inset-0 bg-black/50 z-30"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -62,135 +65,118 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={`fixed top-0 left-0 h-full z-40 overflow-hidden flex flex-col
-          ${mobileOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
+          ${mobileOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 transition-transform duration-300`}
         style={{
-          width: collapsed ? "5rem" : "16.5rem",
-          transition: "width 400ms cubic-bezier(0.4, 0, 0.2, 1)",
+          width: collapsed ? "4.5rem" : "16rem",
+          transition: "width 300ms cubic-bezier(0.4, 0, 0.2, 1)",
           background: "var(--sidebar-bg)",
-          borderRight: "1px solid rgba(255,255,255,0.06)",
+          borderRight: "1px solid var(--sidebar-border)",
         }}
-        onMouseEnter={() => !mobileOpen && setCollapsed(false)}
-        onMouseLeave={() => !mobileOpen && setCollapsed(true)}
+        onMouseEnter={() => !mobileOpen && collapsed && setCollapsed(false)}
+        onMouseLeave={() => !mobileOpen && !collapsed && setCollapsed(false)} // Let's keep it fixed if user uses toggle? Nah, the previous logic expanded on hover. Actually, if we set default collapsed to false, let's remove hover expansion to make it a solid SaaS sidebar.
       >
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-4 py-6 overflow-hidden whitespace-nowrap">
-          <div
-            className="w-10 h-10 flex-shrink-0 rounded-xl flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, #3366ff, #8b5cf6)" }}
-          >
-            <Wallet className="text-white" size={20} />
+        {/* Logo Area */}
+        <div className="flex items-center gap-3 px-5 py-6 whitespace-nowrap overflow-hidden">
+          <div className="flex items-center justify-center w-8 h-8 rounded-md bg-black text-white dark:bg-white dark:text-black flex-shrink-0">
+            <Wallet size={16} strokeWidth={2.5} />
           </div>
           <div
-            className="whitespace-nowrap"
+            className="whitespace-nowrap flex-1 flex items-center justify-between"
             style={{
               opacity: collapsed ? 0 : 1,
-              transition: "opacity 300ms ease",
+              transition: "opacity 200ms ease",
             }}
           >
-            <h1 className="text-base font-bold text-white tracking-tight">
-              FinControl
-            </h1>
-            <p className="text-[10px] text-[var(--sidebar-text)] font-medium">
-              Finanças Pessoais
-            </p>
+            <div>
+              <h1 className="text-[15px] font-bold tracking-tight text-black dark:text-white leading-tight">
+                FinControl
+              </h1>
+              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                Página Inicial
+              </p>
+            </div>
+            {/* Collapse toggle button for desktop */}
+            <button 
+              onClick={(e) => { e.stopPropagation(); setCollapsed(!collapsed); }}
+              className="text-slate-400 hover:text-black dark:hover:text-white hidden lg:flex"
+            >
+              <ChevronsLeft size={16} className={`transition-transform ${collapsed ? 'rotate-180' : ''}`} />
+            </button>
           </div>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 mt-2 px-3 overflow-y-auto">
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-2 overflow-y-auto scrollbar-thin">
           <p
-            className="px-3 mb-2 text-[10px] font-bold uppercase tracking-[0.15em] whitespace-nowrap overflow-hidden"
+            className="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap overflow-hidden text-slate-400 dark:text-slate-500"
             style={{
-              color: "var(--sidebar-text)",
-              opacity: collapsed ? 0 : 0.5,
+              opacity: collapsed ? 0 : 1,
               maxHeight: collapsed ? 0 : "1.5rem",
-              marginBottom: collapsed ? 0 : "0.5rem",
-              transition:
-                "opacity 250ms ease, max-height 300ms ease, margin 300ms ease",
+              transition: "all 200ms ease",
             }}
           >
             Menu
           </p>
-          {navItems.map((item) => {
-            const isActive = pathname === item.href;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 text-sm font-medium overflow-hidden whitespace-nowrap transition-all duration-200"
-                style={{
-                  background: isActive
-                    ? "var(--sidebar-active)"
-                    : "transparent",
-                  color: isActive
-                    ? "var(--sidebar-text-active)"
-                    : "var(--sidebar-text)",
-                }}
-                title={item.label}
-                onMouseEnter={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = "var(--sidebar-hover)";
-                    e.currentTarget.style.color = "var(--sidebar-text-active)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = "transparent";
-                    e.currentTarget.style.color = "var(--sidebar-text)";
-                  }
-                }}
-              >
-                <div
-                  className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
+
+          <div className="space-y-0.5">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href;
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors"
                   style={{
-                    background: isActive ? "var(--brand)" : "transparent",
+                    background: isActive ? "var(--sidebar-active)" : "transparent",
+                    color: isActive ? "var(--sidebar-text-active)" : "var(--sidebar-text)",
+                  }}
+                  title={item.label}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = "var(--sidebar-hover)";
+                      e.currentTarget.style.color = "var(--sidebar-text-active)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = "transparent";
+                      e.currentTarget.style.color = "var(--sidebar-text)";
+                    }
                   }}
                 >
                   <Icon
                     size={16}
+                    className="flex-shrink-0"
                     style={{
-                      color: isActive ? "#ffffff" : "var(--sidebar-text)",
+                      color: isActive ? "var(--sidebar-text-active)" : "var(--sidebar-text)",
                     }}
                   />
-                </div>
-                <span
-                  className="whitespace-nowrap"
-                  style={{
-                    opacity: collapsed ? 0 : 1,
-                    transition: "opacity 250ms ease",
-                  }}
-                >
-                  {item.label}
-                </span>
-                {isActive && (
-                  <div
-                    className="ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0"
+                  <span
+                    className="whitespace-nowrap"
                     style={{
-                      background: "var(--brand)",
                       opacity: collapsed ? 0 : 1,
-                      transition: "opacity 250ms ease",
+                      transition: "opacity 200ms ease",
                     }}
-                  />
-                )}
-              </Link>
-            );
-          })}
+                  >
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
         </nav>
 
-        {/* Logout */}
-        <div
-          className="p-3"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
-        >
+        {/* Footer Area */}
+        <div className="p-3 border-t border-[var(--sidebar-border)]">
           <button
             onClick={() => authAPI.logout()}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 overflow-hidden whitespace-nowrap"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors"
             style={{ color: "var(--sidebar-text)" }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(249, 58, 74, 0.1)";
-              e.currentTarget.style.color = "#f93a4a";
+              e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)";
+              e.currentTarget.style.color = "#ef4444";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = "transparent";
@@ -202,7 +188,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
               className="whitespace-nowrap"
               style={{
                 opacity: collapsed ? 0 : 1,
-                transition: "opacity 250ms ease",
+                transition: "opacity 200ms ease",
               }}
             >
               Sair da conta

@@ -16,7 +16,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<"loading" | "auth" | "public">(
     "loading",
   );
-  const [collapsedSidebar, setCollapsedSidebar] = useState(true);
+  const [collapsedSidebar, setCollapsedSidebar] = useState(false);
   const [calculatorOpen, setCalculatorOpen] = useState(false);
 
   const isPublic = PUBLIC_ROUTES.includes(pathname);
@@ -115,9 +115,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       >
         {/* Top Bar */}
         <header
-          className="sticky top-0 z-20 hidden lg:flex items-center justify-end gap-3 px-8 py-4"
+          className="sticky top-0 z-20 hidden lg:flex items-center justify-end gap-3 px-8 py-3 backdrop-blur-md"
           style={{
-            background: "var(--bg-base)",
+            background: "rgba(var(--bg-base), 0.7)",
             borderBottom: "1px solid var(--border-subtle)",
           }}
         >
@@ -129,8 +129,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div
           className="flex-1 p-4 lg:px-8 lg:py-6"
           style={{
-            marginLeft: collapsedSidebar ? "5rem" : "16.5rem",
-            transition: "margin-left 400ms cubic-bezier(0.4, 0, 0.2, 1)",
+            marginLeft: collapsedSidebar ? "4.5rem" : "16rem",
+            transition: "margin-left 300ms cubic-bezier(0.4, 0, 0.2, 1)",
           }}
         >
           {children}
