@@ -4,3 +4,9 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://fincontrol-backend.onrender.com/api/:splat"
+  status = 200
+  force = true
