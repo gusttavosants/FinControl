@@ -78,7 +78,14 @@ def root():
 @app.get("/api/health")
 def health_check():
     """Health check endpoint"""
-    return {"status": "ok"}
+    try:
+        from database import SessionLocal
+        db = SessionLocal()
+        db.execute("SELECT 1")
+        db.close()
+        return {"status": "ok", "database": "connected"}
+    except Exception as e:
+        return {"status": "error", "database": str(e)}
 
 @app.on_event("startup")
 async def startup_event():
@@ -346,11 +353,19 @@ def register(data: UserRegister, db: Session = Depends(get_db)):
 
 @app.post("/api/auth/login", response_model=TokenResponse)
 def login(data: UserLogin, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == data.email).first()
-    if not user or not pwd_context.verify(data.senha, user.senha_hash):
-        raise HTTPException(status_code=401, detail="Email ou senha incorretos")
-    token = create_access_token(user.id)
-    return TokenResponse(access_token=token, user=UserResponse.model_validate(user))
+    try:
+        user = db.query(User).filter(User.email == data.email).first()
+        if not user or not pwd_context.verify(data.senha, user.senha_hash):
+            raise HTTPException(status_code=401, detail="Email ou senha incorretos")
+        token = create_access_token(user.id)
+        return TokenResponse(access_token=token, user=UserResponse.model_validate(user))
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Login error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erro no servidor: {str(e)}")
 
 
 @app.get("/api/auth/me", response_model=UserResponse)
