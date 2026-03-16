@@ -392,7 +392,7 @@ CATEGORIAS_DESPESA = [
 # ==================== AUTH ====================
 @app.post("/api/auth/register", response_model=TokenResponse, status_code=201)
 def register(data: UserRegister, db: Session = Depends(get_db)):
-    existing = db.qhash_senhar(User.email == data.email).first()
+    existing = db.query(User).filter(User.email == data.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email já cadastrado")
     if len(data.senha) < 6:
@@ -400,7 +400,7 @@ def register(data: UserRegister, db: Session = Depends(get_db)):
     user = User(
         nome=data.nome,
         email=data.email,
-        senha_hash=pwd_context.hash(data.senha),
+        senha_hash=hash_senha(data.senha),
     )
     db.add(user)
     db.commit()
