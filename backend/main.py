@@ -29,14 +29,22 @@ from schemas import (
     SharedAccountInvite, SharedAccountResponse,
     InvestimentoCreate, InvestimentoUpdate, InvestimentoResponse,
 )
-from passlib.context import CryptContext
+import bcrypt
 from jose import JWTError, jwt
 
 SECRET_KEY = os.environ.get("JWT_SECRET", "fincontrol-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Funções de hash/verify com bcrypt puro
+def hash_senha(senha: str) -> str:
+    """Hash de senha com truncamento para limite de bcrypt (72 caracteres)"""
+    return bcrypt.hashpw(senha[:72].encode(), bcrypt.gensalt()).decode()
+
+def verify_senha(senha: str, hash: str) -> bool:
+    """Verifica senha com truncamento"""
+    return bcrypt.checkpw(senha[:72].encode(), hash.encode())
+
 security = HTTPBearer(auto_error=False)
 
 app = FastAPI(title="Controle Financeiro Pessoal", version="1.0.0")
@@ -45,7 +53,7 @@ app = FastAPI(title="Controle Financeiro Pessoal", version="1.0.0")
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://fin-control-peach.vercel.app",
+    "https://fin-control.vercel.app",
     "https://fin-control-fawn.vercel.app",
     "https://creative-cranachan-b54dcf.netlify.app",
 ]
@@ -384,7 +392,7 @@ CATEGORIAS_DESPESA = [
 # ==================== AUTH ====================
 @app.post("/api/auth/register", response_model=TokenResponse, status_code=201)
 def register(data: UserRegister, db: Session = Depends(get_db)):
-    existing = db.query(User).filter(User.email == data.email).first()
+    existing = db.qhash_senhar(User.email == data.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email já cadastrado")
     if len(data.senha) < 6:
@@ -405,7 +413,7 @@ def register(data: UserRegister, db: Session = Depends(get_db)):
 def login(data: UserLogin, db: Session = Depends(get_db)):
     try:
         user = db.query(User).filter(User.email == data.email).first()
-        if not user or not pwd_context.verify(data.senha, user.senha_hash):
+        if not user or not verify_senha(data.senha, user.senha_hash):
             raise HTTPException(status_code=401, detail="Email ou senha incorretos")
         token = create_access_token(user.id)
         return TokenResponse(access_token=token, user=UserResponse.model_validate(user))
