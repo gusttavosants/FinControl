@@ -77,15 +77,65 @@ def root():
 
 @app.get("/api/health")
 def health_check():
-    """Health check endpoint"""
+    """Health check endpoint - tests database connection"""
     try:
+        from sqlalchemy import text
         from database import SessionLocal
         db = SessionLocal()
-        db.execute("SELECT 1")
+        
+        # Test if we can execute a simple query
+        result = db.execute(text("SELECT NOW()")).fetchone()
         db.close()
-        return {"status": "ok", "database": "connected"}
+        
+        return {
+            "status": "ok", 
+            "database": "connected",
+            "timestamp": str(result[0]) if result else None
+        }
     except Exception as e:
-        return {"status": "error", "database": str(e)}
+        return {
+            "status": "error", 
+            "database": "disconnected",
+            "error": str(e)
+        }
+
+@app.get("/api/debug/db")
+def debug_database():
+    """Debug endpoint - detailed database info"""
+    import os
+    from database import DATABASE_URL
+    
+    # Mask password
+    masked_url = DATABASE_URL.replace(os.getenv("DATABASE_URL", ""), "***MASKED***") if DATABASE_URL else "NOT SET"
+    if "://" in masked_url and "@" in masked_url:
+        parts = masked_url.split("@")
+        masked_url = parts[0].split("://")[0] + "://***:***@" + parts[1]
+    
+    info = {
+        "database_url": masked_url,
+        "db_connection": "testing..."
+    }
+    
+    try:
+        from sqlalchemy import text, inspect
+        from database import SessionLocal, engine
+        db = SessionLocal()
+        
+        # Test connection
+        result = db.execute(text("SELECT NOW()")).fetchone()
+        info["db_connection"] = "✅ Connected"
+        info["current_time"] = str(result[0])
+        
+        # List tables
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        info["tables"] = tables
+        
+        db.close()
+    except Exception as e:
+        info["db_connection"] = f"❌ Error: {str(e)}"
+    
+    return info
 
 @app.on_event("startup")
 async def startup_event():
