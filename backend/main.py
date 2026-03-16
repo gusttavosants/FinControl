@@ -46,6 +46,7 @@ ALLOWED_ORIGINS += [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://fin-control-peach.vercel.app",
+    "https://fin-control-fawn.vercel.app",
     "https://creative-cranachan-b54dcf.netlify.app",
 ]
 
