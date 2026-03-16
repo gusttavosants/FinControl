@@ -57,6 +57,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ==================== ROOT ROUTE ====================
+@app.get("/", include_in_schema=False)
+def root():
+    """Root endpoint - returns API info"""
+    return {
+        "app": "Controle Financeiro Pessoal",
+        "version": "1.0.0",
+        "status": "running",
+        "docs": "/docs",
+        "health": "/api/health"
+    }
+
+@app.get("/api/health")
+def health_check():
+    """Health check endpoint"""
+    return {"status": "ok"}
+
 @app.on_event("startup")
 async def startup_event():
     """Executa tarefas automáticas no startup do servidor"""
