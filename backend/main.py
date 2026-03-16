@@ -41,8 +41,8 @@ security = HTTPBearer(auto_error=False)
 
 app = FastAPI(title="Controle Financeiro Pessoal", version="1.0.0")
 
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "").split(",") if os.getenv("ALLOWED_ORIGINS") else []
-ALLOWED_ORIGINS += [
+# CORS Configuration
+ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://fin-control-peach.vercel.app",
@@ -50,12 +50,17 @@ ALLOWED_ORIGINS += [
     "https://creative-cranachan-b54dcf.netlify.app",
 ]
 
+# Add any additional origins from environment variable
+env_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+ALLOWED_ORIGINS.extend([o.strip() for o in env_origins if o.strip()])
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    max_age=3600,
 )
 
 # ==================== ROOT ROUTE ====================
