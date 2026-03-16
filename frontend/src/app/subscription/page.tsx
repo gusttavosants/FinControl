@@ -137,8 +137,10 @@ export default function SubscriptionPage() {
             <div>
               <h2 className="text-2xl font-bold text-gray-900">
                 Plano{" "}
-                {subscription?.plan.charAt(0).toUpperCase() +
-                  subscription?.plan.slice(1)}
+                {subscription?.plan
+                  ? subscription.plan.charAt(0).toUpperCase() +
+                    subscription.plan.slice(1)
+                  : "N/A"}
               </h2>
               <p className="text-gray-600">
                 Status:{" "}
