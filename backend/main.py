@@ -14,7 +14,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-Base.metadata.create_all(bind=engine)
 import pandas as pd
 import io
 import re
@@ -61,6 +60,13 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     """Executa tarefas automáticas no startup do servidor"""
+    try:
+        # Inicializa tabelas do banco de dados
+        Base.metadata.create_all(bind=engine)
+        print("✅ Database tables initialized")
+    except Exception as e:
+        print(f"❌ Erro ao inicializar database: {str(e)}")
+    
     from database import SessionLocal
     db = SessionLocal()
     try:

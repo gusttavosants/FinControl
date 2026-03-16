@@ -6,17 +6,30 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+def get_database_url():
+    """Dynamically loads DATABASE_URL from environment"""
+    database_url = os.getenv("DATABASE_URL")
+    
+    if not database_url:
+        DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "financial.db")
+        database_url = f"sqlite:///{DB_PATH}"
+    
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    
+    return database_url
 
-if not DATABASE_URL:
-    DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "financial.db")
-    DATABASE_URL = f"sqlite:///{DB_PATH}"
-
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+DATABASE_URL = get_database_url()
 
 if DATABASE_URL.startswith("postgresql"):
-    engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=10, max_overflow=20)
+    # Para Supabase, adiciona SSL
+    engine = create_engine(
+        DATABASE_URL, 
+        pool_pre_ping=True, 
+        pool_size=10, 
+        max_overflow=20,
+        connect_args={"sslmode": "require"}
+    )
 else:
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 
