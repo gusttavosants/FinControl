@@ -19,6 +19,9 @@ class UserResponse(BaseModel):
     id: int
     nome: str
     email: str
+    role: str
+    plan: str
+    is_active: bool
 
     class Config:
         from_attributes = True
@@ -28,6 +31,28 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+
+# --- Admin Schemas ---
+class UserAdminResponse(BaseModel):
+    id: int
+    nome: str
+    email: str
+    role: str
+    plan: str
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class UserRoleUpdate(BaseModel):
+    role: str  # user, moderator, admin
+
+
+class UserStatusUpdate(BaseModel):
+    is_active: bool
 
 
 # --- Receita Schemas ---
@@ -268,6 +293,21 @@ class NotificationResponse(BaseModel):
     lida: bool
     referencia_id: Optional[int] = None
     referencia_tipo: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AuditLogResponse(BaseModel):
+    id: int
+    user_id: Optional[int] = None
+    user_email: Optional[str] = None
+    action: str
+    entity_type: Optional[str] = None
+    entity_id: Optional[int] = None
+    details: Optional[str] = None
+    ip_address: Optional[str] = None
     created_at: datetime
 
     class Config:

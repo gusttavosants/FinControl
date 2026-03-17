@@ -1,4 +1,15 @@
-from sqlalchemy import Column, Integer, String, Float, Date, DateTime, Boolean, Text, ForeignKey, UniqueConstraint
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Float,
+    Date,
+    DateTime,
+    Boolean,
+    Text,
+    ForeignKey,
+    UniqueConstraint,
+)
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from database import Base
@@ -12,7 +23,9 @@ class User(Base):
     nome = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
     senha_hash = Column(String(255), nullable=False)
-    plan = Column(String(20), nullable=False, default='free')  # free, pro, premium
+    plan = Column(String(20), nullable=False, default="free")  # free, pro, premium
+    role = Column(String(20), nullable=False, default="user")  # user, moderator, admin
+    is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, server_default=func.now())
 
 
@@ -21,9 +34,13 @@ class SharedAccount(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    partner_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # null = pending invite
+    partner_id = Column(
+        Integer, ForeignKey("users.id"), nullable=True
+    )  # null = pending invite
     partner_email = Column(String(255), nullable=False)  # email do convidado
-    status = Column(String(20), nullable=False, default="pending")  # pending, active, rejected
+    status = Column(
+        String(20), nullable=False, default="pending"
+    )  # pending, active, rejected
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
@@ -60,7 +77,9 @@ class Despesa(Base):
     pago = Column(Boolean, default=False)
     observacoes = Column(Text, nullable=True)
     recorrente = Column(Boolean, default=False)
-    frequencia_recorrencia = Column(String(20), nullable=True)  # "mensal", "semanal", "anual"
+    frequencia_recorrencia = Column(
+        String(20), nullable=True
+    )  # "mensal", "semanal", "anual"
     parcelas_restantes = Column(Integer, nullable=True)  # quantas parcelas ainda gerar
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -113,9 +132,24 @@ class Notification(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     titulo = Column(String(255), nullable=False)
     mensagem = Column(Text, nullable=False)
-    tipo = Column(String(50), nullable=False)  # 'vencimento', 'orcamento', 'meta', 'sistema'
+    tipo = Column(String(50), nullable=False)
     lida = Column(Boolean, default=False)
-    referencia_id = Column(Integer, nullable=True)  # ID da despesa/meta/orçamento relacionado
-    referencia_tipo = Column(String(50), nullable=True)  # 'despesa', 'meta', 'orcamento'
+    referencia_id = Column(Integer, nullable=True)
+    referencia_tipo = Column(String(50), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    user_email = Column(String(255), nullable=True)
+    action = Column(String(100), nullable=False)
+    entity_type = Column(String(50), nullable=True)
+    entity_id = Column(Integer, nullable=True)
+    details = Column(Text, nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(String(255), nullable=True)
+    created_at = Column(DateTime, server_default=func.now())

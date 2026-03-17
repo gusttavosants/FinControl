@@ -8,7 +8,17 @@ from typing import List, Optional
 from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from database import engine, get_db, Base
-from models import Receita, Despesa, OrcamentoCategoria, Meta, User, Notification, SharedAccount, Investimento
+from models import (
+    Receita,
+    Despesa,
+    OrcamentoCategoria,
+    Meta,
+    User,
+    Notification,
+    SharedAccount,
+    Investimento,
+    AuditLog,
+)
 import os
 from dotenv import load_dotenv
 
@@ -19,31 +29,59 @@ import io
 import re
 import httpx
 from schemas import (
-    ReceitaCreate, ReceitaUpdate, ReceitaResponse,
-    DespesaCreate, DespesaUpdate, DespesaResponse,
-    OrcamentoCreate, OrcamentoResponse,
-    MetaCreate, MetaUpdate, MetaResponse,
-    DashboardSummary, CategoriaGasto, EvolucaoMensal, ProximoVencimento,
-    UserRegister, UserLogin, UserResponse, TokenResponse,
-    ChatRequest, ChatResponse, NotificationCreate, NotificationResponse,
-    SharedAccountInvite, SharedAccountResponse,
-    InvestimentoCreate, InvestimentoUpdate, InvestimentoResponse,
+    ReceitaCreate,
+    ReceitaUpdate,
+    ReceitaResponse,
+    DespesaCreate,
+    DespesaUpdate,
+    DespesaResponse,
+    OrcamentoCreate,
+    OrcamentoResponse,
+    MetaCreate,
+    MetaUpdate,
+    MetaResponse,
+    DashboardSummary,
+    CategoriaGasto,
+    EvolucaoMensal,
+    ProximoVencimento,
+    UserRegister,
+    UserLogin,
+    UserResponse,
+    TokenResponse,
+    ChatRequest,
+    ChatResponse,
+    NotificationCreate,
+    NotificationResponse,
+    SharedAccountInvite,
+    SharedAccountResponse,
+    InvestimentoCreate,
+    InvestimentoUpdate,
+    InvestimentoResponse,
+    UserAdminResponse,
+    UserRoleUpdate,
+    UserStatusUpdate,
+    AuditLogResponse,
 )
 import bcrypt
 from jose import JWTError, jwt
+from core.rbac import require_admin, get_role_permissions, ROLES
+from fastapi import Header
 
 SECRET_KEY = os.environ.get("JWT_SECRET", "fincontrol-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
+
 
 # Funções de hash/verify com bcrypt puro
 def hash_senha(senha: str) -> str:
     """Hash de senha com truncamento para limite de bcrypt (72 caracteres)"""
     return bcrypt.hashpw(senha[:72].encode(), bcrypt.gensalt()).decode()
 
+
 def verify_senha(senha: str, hash: str) -> bool:
     """Verifica senha com truncamento"""
     return bcrypt.checkpw(senha[:72].encode(), hash.encode())
+
 
 security = HTTPBearer(auto_error=False)
 
@@ -71,6 +109,7 @@ app.add_middleware(
     max_age=3600,
 )
 
+
 # ==================== ROOT ROUTE ====================
 @app.get("/", include_in_schema=False)
 def root():
@@ -80,8 +119,9 @@ def root():
         "version": "1.0.0",
         "status": "running",
         "docs": "/docs",
-        "health": "/api/health"
+        "health": "/api/health",
     }
+
 
 @app.get("/api/health")
 def health_check():
@@ -89,61 +129,62 @@ def health_check():
     try:
         from sqlalchemy import text
         from database import SessionLocal
+
         db = SessionLocal()
-        
+
         # Test if we can execute a simple query
         result = db.execute(text("SELECT NOW()")).fetchone()
         db.close()
-        
+
         return {
-            "status": "ok", 
+            "status": "ok",
             "database": "connected",
-            "timestamp": str(result[0]) if result else None
+            "timestamp": str(result[0]) if result else None,
         }
     except Exception as e:
-        return {
-            "status": "error", 
-            "database": "disconnected",
-            "error": str(e)
-        }
+        return {"status": "error", "database": "disconnected", "error": str(e)}
+
 
 @app.get("/api/debug/db")
 def debug_database():
     """Debug endpoint - detailed database info"""
     import os
     from database import DATABASE_URL
-    
+
     # Mask password
-    masked_url = DATABASE_URL.replace(os.getenv("DATABASE_URL", ""), "***MASKED***") if DATABASE_URL else "NOT SET"
+    masked_url = (
+        DATABASE_URL.replace(os.getenv("DATABASE_URL", ""), "***MASKED***")
+        if DATABASE_URL
+        else "NOT SET"
+    )
     if "://" in masked_url and "@" in masked_url:
         parts = masked_url.split("@")
         masked_url = parts[0].split("://")[0] + "://***:***@" + parts[1]
-    
-    info = {
-        "database_url": masked_url,
-        "db_connection": "testing..."
-    }
-    
+
+    info = {"database_url": masked_url, "db_connection": "testing..."}
+
     try:
         from sqlalchemy import text, inspect
         from database import SessionLocal, engine
+
         db = SessionLocal()
-        
+
         # Test connection
         result = db.execute(text("SELECT NOW()")).fetchone()
         info["db_connection"] = "✅ Connected"
         info["current_time"] = str(result[0])
-        
+
         # List tables
         inspector = inspect(engine)
         tables = inspector.get_table_names()
         info["tables"] = tables
-        
+
         db.close()
     except Exception as e:
         info["db_connection"] = f"❌ Error: {str(e)}"
-    
+
     return info
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -154,8 +195,9 @@ async def startup_event():
         print("✅ Database tables initialized")
     except Exception as e:
         print(f"❌ Erro ao inicializar database: {str(e)}")
-    
+
     from database import SessionLocal
+
     db = SessionLocal()
     try:
         # Gera notificações automaticamente
@@ -173,7 +215,9 @@ async def startup_event():
 
 def create_access_token(user_id: int) -> str:
     expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
-    return jwt.encode({"sub": str(user_id), "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(
+        {"sub": str(user_id), "exp": expire}, SECRET_KEY, algorithm=ALGORITHM
+    )
 
 
 def get_current_user(
@@ -183,7 +227,9 @@ def get_current_user(
     if not credentials:
         return None
     try:
-        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM]
+        )
         user_id = int(payload.get("sub"))
     except (JWTError, ValueError, TypeError):
         return None
@@ -195,23 +241,40 @@ def require_user(user: Optional[User] = Depends(get_current_user)) -> User:
         raise HTTPException(status_code=401, detail="Não autorizado. Faça login.")
     return user
 
-def get_account_user_ids(user: User, db: Session) -> List[int]:
+
+def get_account_user_ids(user: User, db: Session, shared_mode: bool = True) -> List[int]:
     """Return list of user IDs that share the same financial data.
-    If user has an active shared account, returns both user IDs.
+    If user has an active shared account AND shared_mode is True, returns both user IDs.
     Otherwise returns just the user's own ID."""
-    shared = db.query(SharedAccount).filter(
-        SharedAccount.status == "active",
-        (SharedAccount.owner_id == user.id) | (SharedAccount.partner_id == user.id)
-    ).first()
+    if not shared_mode:
+        return [user.id]
+        
+    shared = (
+        db.query(SharedAccount)
+        .filter(
+            SharedAccount.status == "active",
+            (SharedAccount.owner_id == user.id) | (SharedAccount.partner_id == user.id),
+        )
+        .first()
+    )
     if shared:
         return [shared.owner_id, shared.partner_id]
     return [user.id]
 
 
+def get_shared_mode(x_shared_mode: Optional[str] = Header("true")) -> bool:
+    """Dependency to extract shared mode from header"""
+    return (x_shared_mode or "true").lower() != "false"
+
+
 def _build_shared_response(sa: SharedAccount, db: Session) -> dict:
     """Build a SharedAccountResponse dict with owner/partner names."""
     owner = db.query(User).filter(User.id == sa.owner_id).first()
-    partner = db.query(User).filter(User.id == sa.partner_id).first() if sa.partner_id else None
+    partner = (
+        db.query(User).filter(User.id == sa.partner_id).first()
+        if sa.partner_id
+        else None
+    )
     return {
         "id": sa.id,
         "owner_id": sa.owner_id,
@@ -234,21 +297,33 @@ def invite_partner(
 ):
     """Invite a partner by email to share financial data."""
     if data.partner_email == user.email:
-        raise HTTPException(status_code=400, detail="Você não pode convidar a si mesmo.")
+        raise HTTPException(
+            status_code=400, detail="Você não pode convidar a si mesmo."
+        )
 
     # Check if user already has an active shared account
-    existing_active = db.query(SharedAccount).filter(
-        SharedAccount.status == "active",
-        (SharedAccount.owner_id == user.id) | (SharedAccount.partner_id == user.id)
-    ).first()
+    existing_active = (
+        db.query(SharedAccount)
+        .filter(
+            SharedAccount.status == "active",
+            (SharedAccount.owner_id == user.id) | (SharedAccount.partner_id == user.id),
+        )
+        .first()
+    )
     if existing_active:
-        raise HTTPException(status_code=400, detail="Você já possui uma conta compartilhada ativa.")
+        raise HTTPException(
+            status_code=400, detail="Você já possui uma conta compartilhada ativa."
+        )
 
     # Check if there's already a pending invite from this user
-    existing_pending = db.query(SharedAccount).filter(
-        SharedAccount.owner_id == user.id,
-        SharedAccount.status == "pending",
-    ).first()
+    existing_pending = (
+        db.query(SharedAccount)
+        .filter(
+            SharedAccount.owner_id == user.id,
+            SharedAccount.status == "pending",
+        )
+        .first()
+    )
     if existing_pending:
         # Update the pending invite
         existing_pending.partner_email = data.partner_email
@@ -276,7 +351,9 @@ def invite_partner(
     return _build_shared_response(sa, db)
 
 
-@app.post("/api/shared-account/{account_id}/accept", response_model=SharedAccountResponse)
+@app.post(
+    "/api/shared-account/{account_id}/accept", response_model=SharedAccountResponse
+)
 def accept_invite(
     account_id: int,
     user: User = Depends(require_user),
@@ -292,12 +369,18 @@ def accept_invite(
         raise HTTPException(status_code=400, detail="Este convite já foi processado.")
 
     # Check if user already has an active shared account
-    existing_active = db.query(SharedAccount).filter(
-        SharedAccount.status == "active",
-        (SharedAccount.owner_id == user.id) | (SharedAccount.partner_id == user.id)
-    ).first()
+    existing_active = (
+        db.query(SharedAccount)
+        .filter(
+            SharedAccount.status == "active",
+            (SharedAccount.owner_id == user.id) | (SharedAccount.partner_id == user.id),
+        )
+        .first()
+    )
     if existing_active:
-        raise HTTPException(status_code=400, detail="Você já possui uma conta compartilhada ativa.")
+        raise HTTPException(
+            status_code=400, detail="Você já possui uma conta compartilhada ativa."
+        )
 
     sa.partner_id = user.id
     sa.status = "active"
@@ -335,7 +418,9 @@ def remove_shared_account(
     """Remove/cancel a shared account (either owner or partner can do this)."""
     sa = db.query(SharedAccount).filter(SharedAccount.id == account_id).first()
     if not sa:
-        raise HTTPException(status_code=404, detail="Conta compartilhada não encontrada.")
+        raise HTTPException(
+            status_code=404, detail="Conta compartilhada não encontrada."
+        )
     if sa.owner_id != user.id and sa.partner_id != user.id:
         raise HTTPException(status_code=403, detail="Você não tem permissão.")
 
@@ -351,41 +436,71 @@ def shared_account_status(
 ):
     """Get current shared account status for the logged-in user."""
     # Active shared account
-    active = db.query(SharedAccount).filter(
-        SharedAccount.status == "active",
-        (SharedAccount.owner_id == user.id) | (SharedAccount.partner_id == user.id)
-    ).first()
+    active = (
+        db.query(SharedAccount)
+        .filter(
+            SharedAccount.status == "active",
+            (SharedAccount.owner_id == user.id) | (SharedAccount.partner_id == user.id),
+        )
+        .first()
+    )
     if active:
         return {"type": "active", "account": _build_shared_response(active, db)}
 
     # Pending invite sent by user
-    sent = db.query(SharedAccount).filter(
-        SharedAccount.owner_id == user.id,
-        SharedAccount.status == "pending",
-    ).first()
+    sent = (
+        db.query(SharedAccount)
+        .filter(
+            SharedAccount.owner_id == user.id,
+            SharedAccount.status == "pending",
+        )
+        .first()
+    )
     if sent:
         return {"type": "pending_sent", "account": _build_shared_response(sent, db)}
 
     # Pending invite received by user
-    received = db.query(SharedAccount).filter(
-        SharedAccount.partner_email == user.email,
-        SharedAccount.status == "pending",
-    ).first()
+    received = (
+        db.query(SharedAccount)
+        .filter(
+            SharedAccount.partner_email == user.email,
+            SharedAccount.status == "pending",
+        )
+        .first()
+    )
     if received:
-        return {"type": "pending_received", "account": _build_shared_response(received, db)}
+        return {
+            "type": "pending_received",
+            "account": _build_shared_response(received, db),
+        }
 
     return {"type": "none", "account": None}
 
 
 CATEGORIAS_RECEITA = [
-    "Salário", "Freelance", "Investimentos", "Aluguel Recebido",
-    "Comissão", "Bônus", "Outros"
+    "Salário",
+    "Freelance",
+    "Investimentos",
+    "Aluguel Recebido",
+    "Comissão",
+    "Bônus",
+    "Outros",
 ]
 
 CATEGORIAS_DESPESA = [
-    "Alimentação", "Aluguel", "Carne", "Crédito", "Débito",
-    "Diversos", "Empréstimo", "Financiamento", "Gás",
-    "Hipermercado", "Locação", "Uber/Transporte", "Vestuário"
+    "Alimentação",
+    "Aluguel",
+    "Carne",
+    "Crédito",
+    "Débito",
+    "Diversos",
+    "Empréstimo",
+    "Financiamento",
+    "Gás",
+    "Hipermercado",
+    "Locação",
+    "Uber/Transporte",
+    "Vestuário",
 ]
 
 
@@ -396,7 +511,9 @@ def register(data: UserRegister, db: Session = Depends(get_db)):
     if existing:
         raise HTTPException(status_code=400, detail="Email já cadastrado")
     if len(data.senha) < 6:
-        raise HTTPException(status_code=400, detail="Senha deve ter pelo menos 6 caracteres")
+        raise HTTPException(
+            status_code=400, detail="Senha deve ter pelo menos 6 caracteres"
+        )
     user = User(
         nome=data.nome,
         email=data.email,
@@ -422,6 +539,7 @@ def login(data: UserLogin, db: Session = Depends(get_db)):
     except Exception as e:
         print(f"❌ Login error: {str(e)}")
         import traceback
+
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro no servidor: {str(e)}")
 
@@ -435,6 +553,208 @@ def get_me(user: User = Depends(require_user)):
 def refresh_token(user: User = Depends(require_user), db: Session = Depends(get_db)):
     token = create_access_token(user.id)
     return TokenResponse(access_token=token, user=UserResponse.model_validate(user))
+
+
+# ==================== ADMIN ENDPOINTS ====================
+@app.get("/api/admin/users", response_model=List[UserAdminResponse])
+def list_users(
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+):
+    """List all users (admin only)"""
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Acesso apenas para administradores"
+        )
+
+    users = db.query(User).offset(skip).limit(limit).all()
+    return users
+
+
+@app.get("/api/admin/users/{user_id}", response_model=UserAdminResponse)
+def get_user_admin(
+    user_id: int,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    """Get specific user details (admin only)"""
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Acesso apenas para administradores"
+        )
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    return target_user
+
+
+@app.put("/api/admin/users/{user_id}/role")
+def update_user_role(
+    user_id: int,
+    data: UserRoleUpdate,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    """Update user role (admin only) - Prevent removing last admin"""
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Acesso apenas para administradores"
+        )
+
+    if data.role not in ROLES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Role inválida. Roles disponíveis: {', '.join(ROLES.keys())}",
+        )
+
+    if user_id == user.id and data.role != "admin":
+        raise HTTPException(
+            status_code=400, detail="Você não pode remover a própria permissão de admin"
+        )
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    old_role = target_user.role
+    target_user.role = data.role
+    db.commit()
+    db.refresh(target_user)
+
+    log_audit(
+        db=db,
+        user_id=user.id,
+        user_email=user.email,
+        action="UPDATE_USER_ROLE",
+        entity_type="user",
+        entity_id=user_id,
+        details=f"Changed role from {old_role} to {data.role}",
+    )
+
+    print(
+        f"✅ Admin {user.email} changed user {target_user.email} role from {old_role} to {data.role}"
+    )
+
+    return {
+        "message": f"Role do usuário alterado de {old_role} para {data.role}",
+        "user": UserAdminResponse.model_validate(target_user),
+    }
+
+
+@app.put("/api/admin/users/{user_id}/status")
+def update_user_status(
+    user_id: int,
+    data: UserStatusUpdate,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    """Activate or deactivate user (admin only)"""
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Acesso apenas para administradores"
+        )
+
+    if user_id == user.id and not data.is_active:
+        raise HTTPException(
+            status_code=400, detail="Você não pode desativar a própria conta"
+        )
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    target_user.is_active = data.is_active
+    db.commit()
+    db.refresh(target_user)
+
+    status = "ativado" if data.is_active else "desativado"
+    print(f"✅ Admin {user.email} {status} user {target_user.email}")
+
+    log_audit(
+        db=db,
+        user_id=user.id,
+        user_email=user.email,
+        action="UPDATE_USER_STATUS",
+        entity_type="user",
+        entity_id=user_id,
+        details=f"Changed is_active from {not data.is_active} to {data.is_active}",
+    )
+
+    return {
+        "message": f"Usuário {status}",
+        "user": UserAdminResponse.model_validate(target_user),
+    }
+
+
+@app.get("/api/admin/roles")
+def get_roles_info(user: User = Depends(require_user)):
+    """Get available roles and their permissions (admin only)"""
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Acesso apenas para administradores"
+        )
+
+    return {
+        "roles": ROLES,
+        "current_user_role": user.role,
+    }
+
+
+@app.post("/api/admin/seed-admin")
+def seed_admin(
+    email: str = Query(...),
+    senha: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    """
+    Create first admin user (only works if no admin exists or db is empty).
+    Usage: POST /api/admin/seed-admin?email=admin@email.com&senha=password123
+    """
+    # Check if any admin exists
+    admin_exists = db.query(User).filter(User.role == "admin").first()
+    if admin_exists:
+        raise HTTPException(
+            status_code=400,
+            detail="Admin já existe no sistema. Use os endpoints normais para gerenciar usuários.",
+        )
+
+    # Check if email already exists
+    existing = db.query(User).filter(User.email == email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Email já cadastrado")
+
+    if len(senha) < 6:
+        raise HTTPException(
+            status_code=400, detail="Senha deve ter pelo menos 6 caracteres"
+        )
+
+    # Create admin user
+    admin_user = User(
+        nome="Administrador",
+        email=email,
+        senha_hash=hash_senha(senha),
+        role="admin",
+        is_active=True,
+        plan="premium",
+    )
+    db.add(admin_user)
+    db.commit()
+    db.refresh(admin_user)
+
+    print(f"✅ Admin user created: {email}")
+
+    # Create token
+    token = create_access_token(admin_user.id)
+    return {
+        "message": "Admin criado com sucesso",
+        "access_token": token,
+        "token_type": "bearer",
+        "user": UserAdminResponse.model_validate(admin_user),
+    }
 
 
 # ==================== CATEGORIAS ====================
@@ -456,8 +776,9 @@ def listar_receitas(
     categoria: Optional[str] = None,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
 ):
-    user_ids = get_account_user_ids(user, db)
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
     query = db.query(Receita).filter(
         (Receita.user_id.in_(user_ids)) | (Receita.user_id == None)
     )
@@ -471,19 +792,32 @@ def listar_receitas(
 
 
 @app.get("/api/receitas/{receita_id}", response_model=ReceitaResponse)
-def obter_receita(receita_id: int, user: User = Depends(require_user), db: Session = Depends(get_db)):
-    user_ids = get_account_user_ids(user, db)
-    receita = db.query(Receita).filter(
-        Receita.id == receita_id,
-        (Receita.user_id.in_(user_ids)) | (Receita.user_id == None)
-    ).first()
+def obter_receita(
+    receita_id: int, 
+    user: User = Depends(require_user), 
+    db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
+):
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
+    receita = (
+        db.query(Receita)
+        .filter(
+            Receita.id == receita_id,
+            (Receita.user_id.in_(user_ids)) | (Receita.user_id == None),
+        )
+        .first()
+    )
     if not receita:
         raise HTTPException(status_code=404, detail="Receita não encontrada")
     return receita
 
 
 @app.post("/api/receitas", response_model=ReceitaResponse, status_code=201)
-def criar_receita(receita: ReceitaCreate, user: User = Depends(require_user), db: Session = Depends(get_db)):
+def criar_receita(
+    receita: ReceitaCreate,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
     db_receita = Receita(**receita.model_dump(), user_id=user.id)
     db.add(db_receita)
     db.commit()
@@ -492,12 +826,22 @@ def criar_receita(receita: ReceitaCreate, user: User = Depends(require_user), db
 
 
 @app.put("/api/receitas/{receita_id}", response_model=ReceitaResponse)
-def atualizar_receita(receita_id: int, receita: ReceitaUpdate, user: User = Depends(require_user), db: Session = Depends(get_db)):
-    user_ids = get_account_user_ids(user, db)
-    db_receita = db.query(Receita).filter(
-        Receita.id == receita_id,
-        (Receita.user_id.in_(user_ids)) | (Receita.user_id == None)
-    ).first()
+def atualizar_receita(
+    receita_id: int,
+    receita: ReceitaUpdate,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
+):
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
+    db_receita = (
+        db.query(Receita)
+        .filter(
+            Receita.id == receita_id,
+            (Receita.user_id.in_(user_ids)) | (Receita.user_id == None),
+        )
+        .first()
+    )
     if not db_receita:
         raise HTTPException(status_code=404, detail="Receita não encontrada")
     update_data = receita.model_dump(exclude_unset=True)
@@ -509,12 +853,21 @@ def atualizar_receita(receita_id: int, receita: ReceitaUpdate, user: User = Depe
 
 
 @app.delete("/api/receitas/{receita_id}", status_code=204)
-def deletar_receita(receita_id: int, user: User = Depends(require_user), db: Session = Depends(get_db)):
-    user_ids = get_account_user_ids(user, db)
-    db_receita = db.query(Receita).filter(
-        Receita.id == receita_id,
-        (Receita.user_id.in_(user_ids)) | (Receita.user_id == None)
-    ).first()
+def deletar_receita(
+    receita_id: int, 
+    user: User = Depends(require_user), 
+    db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
+):
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
+    db_receita = (
+        db.query(Receita)
+        .filter(
+            Receita.id == receita_id,
+            (Receita.user_id.in_(user_ids)) | (Receita.user_id == None),
+        )
+        .first()
+    )
     if not db_receita:
         raise HTTPException(status_code=404, detail="Receita não encontrada")
     db.delete(db_receita)
@@ -530,8 +883,9 @@ def listar_despesas(
     pago: Optional[bool] = None,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
 ):
-    user_ids = get_account_user_ids(user, db)
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
     query = db.query(Despesa).filter(
         (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None)
     )
@@ -547,19 +901,32 @@ def listar_despesas(
 
 
 @app.get("/api/despesas/{despesa_id}", response_model=DespesaResponse)
-def obter_despesa(despesa_id: int, user: User = Depends(require_user), db: Session = Depends(get_db)):
-    user_ids = get_account_user_ids(user, db)
-    despesa = db.query(Despesa).filter(
-        Despesa.id == despesa_id,
-        (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None)
-    ).first()
+def obter_despesa(
+    despesa_id: int, 
+    user: User = Depends(require_user), 
+    db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
+):
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
+    despesa = (
+        db.query(Despesa)
+        .filter(
+            Despesa.id == despesa_id,
+            (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None),
+        )
+        .first()
+    )
     if not despesa:
         raise HTTPException(status_code=404, detail="Despesa não encontrada")
     return despesa
 
 
 @app.post("/api/despesas", response_model=List[DespesaResponse], status_code=201)
-def criar_despesa(despesa: DespesaCreate, user: User = Depends(require_user), db: Session = Depends(get_db)):
+def criar_despesa(
+    despesa: DespesaCreate,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
     dados = despesa.model_dump()
     parcela_atual = dados.get("parcela_atual")
     parcela_total = dados.get("parcela_total")
@@ -591,12 +958,21 @@ def criar_despesa(despesa: DespesaCreate, user: User = Depends(require_user), db
 
 
 @app.put("/api/despesas/{despesa_id}", response_model=DespesaResponse)
-def atualizar_despesa(despesa_id: int, despesa: DespesaUpdate, user: User = Depends(require_user), db: Session = Depends(get_db)):
+def atualizar_despesa(
+    despesa_id: int,
+    despesa: DespesaUpdate,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
     user_ids = get_account_user_ids(user, db)
-    db_despesa = db.query(Despesa).filter(
-        Despesa.id == despesa_id,
-        (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None)
-    ).first()
+    db_despesa = (
+        db.query(Despesa)
+        .filter(
+            Despesa.id == despesa_id,
+            (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None),
+        )
+        .first()
+    )
     if not db_despesa:
         raise HTTPException(status_code=404, detail="Despesa não encontrada")
     update_data = despesa.model_dump(exclude_unset=True)
@@ -608,12 +984,21 @@ def atualizar_despesa(despesa_id: int, despesa: DespesaUpdate, user: User = Depe
 
 
 @app.delete("/api/despesas/{despesa_id}", status_code=204)
-def deletar_despesa(despesa_id: int, user: User = Depends(require_user), db: Session = Depends(get_db)):
-    user_ids = get_account_user_ids(user, db)
-    db_despesa = db.query(Despesa).filter(
-        Despesa.id == despesa_id,
-        (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None)
-    ).first()
+def deletar_despesa(
+    despesa_id: int, 
+    user: User = Depends(require_user), 
+    db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
+):
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
+    db_despesa = (
+        db.query(Despesa)
+        .filter(
+            Despesa.id == despesa_id,
+            (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None),
+        )
+        .first()
+    )
     if not db_despesa:
         raise HTTPException(status_code=404, detail="Despesa não encontrada")
     db.delete(db_despesa)
@@ -621,12 +1006,21 @@ def deletar_despesa(despesa_id: int, user: User = Depends(require_user), db: Ses
 
 
 @app.patch("/api/despesas/{despesa_id}/pagar", response_model=DespesaResponse)
-def marcar_pago(despesa_id: int, user: User = Depends(require_user), db: Session = Depends(get_db)):
-    user_ids = get_account_user_ids(user, db)
-    db_despesa = db.query(Despesa).filter(
-        Despesa.id == despesa_id,
-        (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None)
-    ).first()
+def marcar_pago(
+    despesa_id: int, 
+    user: User = Depends(require_user), 
+    db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
+):
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
+    db_despesa = (
+        db.query(Despesa)
+        .filter(
+            Despesa.id == despesa_id,
+            (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None),
+        )
+        .first()
+    )
     if not db_despesa:
         raise HTTPException(status_code=404, detail="Despesa não encontrada")
     db_despesa.pago = not db_despesa.pago
@@ -638,29 +1032,54 @@ def marcar_pago(despesa_id: int, user: User = Depends(require_user), db: Session
 
 # ==================== NOTIFICATIONS ====================
 @app.get("/api/notifications", response_model=List[NotificationResponse])
-def listar_notifications(user: User = Depends(require_user), db: Session = Depends(get_db)):
-    user_ids = get_account_user_ids(user, db)
-    return db.query(Notification).filter(
-        (Notification.user_id.in_(user_ids)) | (Notification.user_id == None)
-    ).order_by(Notification.created_at.desc()).all()
+def listar_notifications(
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
+):
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
+    return (
+        db.query(Notification)
+        .filter((Notification.user_id.in_(user_ids)) | (Notification.user_id == None))
+        .order_by(Notification.created_at.desc())
+        .all()
+    )
 
 
 @app.get("/api/notifications/unread", response_model=List[NotificationResponse])
-def listar_notifications_unread(user: User = Depends(require_user), db: Session = Depends(get_db)):
-    user_ids = get_account_user_ids(user, db)
-    return db.query(Notification).filter(
-        Notification.lida == False,
-        (Notification.user_id.in_(user_ids)) | (Notification.user_id == None)
-    ).order_by(Notification.created_at.desc()).all()
+def listar_notifications_unread(
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
+):
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
+    return (
+        db.query(Notification)
+        .filter(
+            Notification.lida == False,
+            (Notification.user_id.in_(user_ids)) | (Notification.user_id == None),
+        )
+        .order_by(Notification.created_at.desc())
+        .all()
+    )
 
 
 @app.patch("/api/notifications/{notification_id}/read")
-def marcar_notification_lida(notification_id: int, user: User = Depends(require_user), db: Session = Depends(get_db)):
-    user_ids = get_account_user_ids(user, db)
-    notification = db.query(Notification).filter(
-        Notification.id == notification_id,
-        (Notification.user_id.in_(user_ids)) | (Notification.user_id == None)
-    ).first()
+def marcar_notification_lida(
+    notification_id: int,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
+):
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
+    notification = (
+        db.query(Notification)
+        .filter(
+            Notification.id == notification_id,
+            (Notification.user_id.in_(user_ids)) | (Notification.user_id == None),
+        )
+        .first()
+    )
     if not notification:
         raise HTTPException(status_code=404, detail="Notificação não encontrada")
     notification.lida = True
@@ -676,21 +1095,29 @@ def generate_notifications(db: Session = Depends(get_db)):
 
     # Vencimentos próximos (até 7 dias)
     limite = hoje + timedelta(days=7)
-    despesas_proximas = db.query(Despesa).filter(
-        Despesa.pago == False,
-        Despesa.data_vencimento >= hoje,
-        Despesa.data_vencimento <= limite,
-    ).all()
+    despesas_proximas = (
+        db.query(Despesa)
+        .filter(
+            Despesa.pago == False,
+            Despesa.data_vencimento >= hoje,
+            Despesa.data_vencimento <= limite,
+        )
+        .all()
+    )
 
     for despesa in despesas_proximas:
         dias_restantes = (despesa.data_vencimento - hoje).days
 
         # Verificar se já existe notificação para este vencimento
-        existing = db.query(Notification).filter(
-            Notification.referencia_id == despesa.id,
-            Notification.referencia_tipo == "despesa",
-            Notification.tipo == "vencimento"
-        ).first()
+        existing = (
+            db.query(Notification)
+            .filter(
+                Notification.referencia_id == despesa.id,
+                Notification.referencia_tipo == "despesa",
+                Notification.tipo == "vencimento",
+            )
+            .first()
+        )
 
         if existing:
             continue
@@ -711,7 +1138,7 @@ def generate_notifications(db: Session = Depends(get_db)):
             mensagem=mensagem,
             tipo="vencimento",
             referencia_id=despesa.id,
-            referencia_tipo="despesa"
+            referencia_tipo="despesa",
         )
         db.add(notification)
         created += 1
@@ -721,25 +1148,36 @@ def generate_notifications(db: Session = Depends(get_db)):
     mes_atual = hoje.month
     ano_atual = hoje.year
 
-    orcamentos = db.query(OrcamentoCategoria).filter(
-        OrcamentoCategoria.mes == mes_atual,
-        OrcamentoCategoria.ano == ano_atual
-    ).all()
+    orcamentos = (
+        db.query(OrcamentoCategoria)
+        .filter(
+            OrcamentoCategoria.mes == mes_atual, OrcamentoCategoria.ano == ano_atual
+        )
+        .all()
+    )
 
     for orc in orcamentos:
-        gasto = db.query(func.coalesce(func.sum(Despesa.valor), 0)).filter(
-            Despesa.categoria == orc.categoria,
-            extract("month", Despesa.data_vencimento) == mes_atual,
-            extract("year", Despesa.data_vencimento) == ano_atual,
-        ).scalar()
+        gasto = (
+            db.query(func.coalesce(func.sum(Despesa.valor), 0))
+            .filter(
+                Despesa.categoria == orc.categoria,
+                extract("month", Despesa.data_vencimento) == mes_atual,
+                extract("year", Despesa.data_vencimento) == ano_atual,
+            )
+            .scalar()
+        )
 
         if gasto > orc.limite:
             # Verificar se já existe notificação
-            existing = db.query(Notification).filter(
-                Notification.referencia_id == orc.id,
-                Notification.referencia_tipo == "orcamento",
-                Notification.tipo == "orcamento"
-            ).first()
+            existing = (
+                db.query(Notification)
+                .filter(
+                    Notification.referencia_id == orc.id,
+                    Notification.referencia_tipo == "orcamento",
+                    Notification.tipo == "orcamento",
+                )
+                .first()
+            )
 
             if not existing:
                 notification = Notification(
@@ -747,7 +1185,7 @@ def generate_notifications(db: Session = Depends(get_db)):
                     mensagem=f"O orçamento da categoria '{orc.categoria}' foi excedido. Gasto: R$ {gasto:.2f}, Limite: R$ {orc.limite:.2f}",
                     tipo="orcamento",
                     referencia_id=orc.id,
-                    referencia_tipo="orcamento"
+                    referencia_tipo="orcamento",
                 )
                 db.add(notification)
                 created += 1
@@ -757,12 +1195,21 @@ def generate_notifications(db: Session = Depends(get_db)):
 
 
 @app.delete("/api/notifications/{notification_id}", status_code=204)
-def deletar_notification(notification_id: int, user: User = Depends(require_user), db: Session = Depends(get_db)):
-    user_ids = get_account_user_ids(user, db)
-    notification = db.query(Notification).filter(
-        Notification.id == notification_id,
-        (Notification.user_id.in_(user_ids)) | (Notification.user_id == None)
-    ).first()
+def deletar_notification(
+    notification_id: int,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
+):
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
+    notification = (
+        db.query(Notification)
+        .filter(
+            Notification.id == notification_id,
+            (Notification.user_id.in_(user_ids)) | (Notification.user_id == None),
+        )
+        .first()
+    )
     if not notification:
         raise HTTPException(status_code=404, detail="Notificação não encontrada")
     db.delete(notification)
@@ -775,53 +1222,78 @@ def dashboard_resumo(
     ano: int = Query(default=None),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
 ):
     hoje = date.today()
     if not mes:
         mes = hoje.month
     if not ano:
         ano = hoje.year
-    user_ids = get_account_user_ids(user, db)
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
     uid_filter_r = (Receita.user_id.in_(user_ids)) | (Receita.user_id == None)
     uid_filter_d = (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None)
 
-    receitas = db.query(func.coalesce(func.sum(Receita.valor), 0)).filter(
-        uid_filter_r,
-        extract("month", Receita.data) == mes,
-        extract("year", Receita.data) == ano,
-    ).scalar()
+    receitas = (
+        db.query(func.coalesce(func.sum(Receita.valor), 0))
+        .filter(
+            uid_filter_r,
+            extract("month", Receita.data) == mes,
+            extract("year", Receita.data) == ano,
+        )
+        .scalar()
+    )
 
-    despesas = db.query(func.coalesce(func.sum(Despesa.valor), 0)).filter(
-        uid_filter_d,
-        extract("month", Despesa.data_vencimento) == mes,
-        extract("year", Despesa.data_vencimento) == ano,
-    ).scalar()
+    despesas = (
+        db.query(func.coalesce(func.sum(Despesa.valor), 0))
+        .filter(
+            uid_filter_d,
+            extract("month", Despesa.data_vencimento) == mes,
+            extract("year", Despesa.data_vencimento) == ano,
+        )
+        .scalar()
+    )
 
-    despesas_pagas = db.query(func.coalesce(func.sum(Despesa.valor), 0)).filter(
-        uid_filter_d,
-        extract("month", Despesa.data_vencimento) == mes,
-        extract("year", Despesa.data_vencimento) == ano,
-        Despesa.pago == True,
-    ).scalar()
+    despesas_pagas = (
+        db.query(func.coalesce(func.sum(Despesa.valor), 0))
+        .filter(
+            uid_filter_d,
+            extract("month", Despesa.data_vencimento) == mes,
+            extract("year", Despesa.data_vencimento) == ano,
+            Despesa.pago == True,
+        )
+        .scalar()
+    )
 
-    receitas_count = db.query(func.count(Receita.id)).filter(
-        uid_filter_r,
-        extract("month", Receita.data) == mes,
-        extract("year", Receita.data) == ano,
-    ).scalar()
+    receitas_count = (
+        db.query(func.count(Receita.id))
+        .filter(
+            uid_filter_r,
+            extract("month", Receita.data) == mes,
+            extract("year", Receita.data) == ano,
+        )
+        .scalar()
+    )
 
-    despesas_count = db.query(func.count(Despesa.id)).filter(
-        uid_filter_d,
-        extract("month", Despesa.data_vencimento) == mes,
-        extract("year", Despesa.data_vencimento) == ano,
-    ).scalar()
+    despesas_count = (
+        db.query(func.count(Despesa.id))
+        .filter(
+            uid_filter_d,
+            extract("month", Despesa.data_vencimento) == mes,
+            extract("year", Despesa.data_vencimento) == ano,
+        )
+        .scalar()
+    )
 
-    despesas_pagas_count = db.query(func.count(Despesa.id)).filter(
-        uid_filter_d,
-        extract("month", Despesa.data_vencimento) == mes,
-        extract("year", Despesa.data_vencimento) == ano,
-        Despesa.pago == True,
-    ).scalar()
+    despesas_pagas_count = (
+        db.query(func.count(Despesa.id))
+        .filter(
+            uid_filter_d,
+            extract("month", Despesa.data_vencimento) == mes,
+            extract("year", Despesa.data_vencimento) == ano,
+            Despesa.pago == True,
+        )
+        .scalar()
+    )
 
     return DashboardSummary(
         total_receitas=float(receitas),
@@ -841,13 +1313,14 @@ def dashboard_categorias(
     ano: int = Query(default=None),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
 ):
     hoje = date.today()
     if not mes:
         mes = hoje.month
     if not ano:
         ano = hoje.year
-    user_ids = get_account_user_ids(user, db)
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
     uid_filter_d = (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None)
 
     resultados = (
@@ -879,14 +1352,26 @@ def dashboard_evolucao(
     meses: int = Query(default=6),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
 ):
     hoje = date.today()
     resultado = []
     nomes_meses = [
-        "", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
-        "Jul", "Ago", "Set", "Out", "Nov", "Dez"
+        "",
+        "Jan",
+        "Fev",
+        "Mar",
+        "Abr",
+        "Mai",
+        "Jun",
+        "Jul",
+        "Ago",
+        "Set",
+        "Out",
+        "Nov",
+        "Dez",
     ]
-    user_ids = get_account_user_ids(user, db)
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
     uid_filter_r = (Receita.user_id.in_(user_ids)) | (Receita.user_id == None)
     uid_filter_d = (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None)
 
@@ -895,17 +1380,25 @@ def dashboard_evolucao(
         m = d.month
         a = d.year
 
-        receitas = db.query(func.coalesce(func.sum(Receita.valor), 0)).filter(
-            uid_filter_r,
-            extract("month", Receita.data) == m,
-            extract("year", Receita.data) == a,
-        ).scalar()
+        receitas = (
+            db.query(func.coalesce(func.sum(Receita.valor), 0))
+            .filter(
+                uid_filter_r,
+                extract("month", Receita.data) == m,
+                extract("year", Receita.data) == a,
+            )
+            .scalar()
+        )
 
-        despesas = db.query(func.coalesce(func.sum(Despesa.valor), 0)).filter(
-            uid_filter_d,
-            extract("month", Despesa.data_vencimento) == m,
-            extract("year", Despesa.data_vencimento) == a,
-        ).scalar()
+        despesas = (
+            db.query(func.coalesce(func.sum(Despesa.valor), 0))
+            .filter(
+                uid_filter_d,
+                extract("month", Despesa.data_vencimento) == m,
+                extract("year", Despesa.data_vencimento) == a,
+            )
+            .scalar()
+        )
 
         resultado.append(
             EvolucaoMensal(
@@ -924,10 +1417,11 @@ def proximos_vencimentos(
     dias: int = Query(default=30),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
 ):
     hoje = date.today()
     limite = hoje + timedelta(days=dias)
-    user_ids = get_account_user_ids(user, db)
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
 
     despesas = (
         db.query(Despesa)
@@ -974,27 +1468,36 @@ def relatorio_mensal(
     ano: int = Query(default=None),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
 ):
     hoje = date.today()
     if not mes:
         mes = hoje.month
     if not ano:
         ano = hoje.year
-    user_ids = get_account_user_ids(user, db)
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
     uid_filter_r = (Receita.user_id.in_(user_ids)) | (Receita.user_id == None)
     uid_filter_d = (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None)
 
-    receitas = db.query(Receita).filter(
-        uid_filter_r,
-        extract("month", Receita.data) == mes,
-        extract("year", Receita.data) == ano,
-    ).all()
+    receitas = (
+        db.query(Receita)
+        .filter(
+            uid_filter_r,
+            extract("month", Receita.data) == mes,
+            extract("year", Receita.data) == ano,
+        )
+        .all()
+    )
 
-    despesas = db.query(Despesa).filter(
-        uid_filter_d,
-        extract("month", Despesa.data_vencimento) == mes,
-        extract("year", Despesa.data_vencimento) == ano,
-    ).all()
+    despesas = (
+        db.query(Despesa)
+        .filter(
+            uid_filter_d,
+            extract("month", Despesa.data_vencimento) == mes,
+            extract("year", Despesa.data_vencimento) == ano,
+        )
+        .all()
+    )
 
     total_receitas = sum(r.valor for r in receitas)
     total_despesas = sum(d.valor for d in despesas)
@@ -1033,14 +1536,26 @@ def relatorio_comparativo(
     meses: int = Query(default=12),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
 ):
     hoje = date.today()
     resultado = []
     nomes_meses = [
-        "", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+        "",
+        "Janeiro",
+        "Fevereiro",
+        "Março",
+        "Abril",
+        "Maio",
+        "Junho",
+        "Julho",
+        "Agosto",
+        "Setembro",
+        "Outubro",
+        "Novembro",
+        "Dezembro",
     ]
-    user_ids = get_account_user_ids(user, db)
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
     uid_filter_r = (Receita.user_id.in_(user_ids)) | (Receita.user_id == None)
     uid_filter_d = (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None)
 
@@ -1049,29 +1564,41 @@ def relatorio_comparativo(
         m = d.month
         a = d.year
 
-        receitas = db.query(func.coalesce(func.sum(Receita.valor), 0)).filter(
-            uid_filter_r,
-            extract("month", Receita.data) == m,
-            extract("year", Receita.data) == a,
-        ).scalar()
+        receitas = (
+            db.query(func.coalesce(func.sum(Receita.valor), 0))
+            .filter(
+                uid_filter_r,
+                extract("month", Receita.data) == m,
+                extract("year", Receita.data) == a,
+            )
+            .scalar()
+        )
 
-        despesas = db.query(func.coalesce(func.sum(Despesa.valor), 0)).filter(
-            uid_filter_d,
-            extract("month", Despesa.data_vencimento) == m,
-            extract("year", Despesa.data_vencimento) == a,
-        ).scalar()
+        despesas = (
+            db.query(func.coalesce(func.sum(Despesa.valor), 0))
+            .filter(
+                uid_filter_d,
+                extract("month", Despesa.data_vencimento) == m,
+                extract("year", Despesa.data_vencimento) == a,
+            )
+            .scalar()
+        )
 
-        resultado.append({
-            "mes": f"{nomes_meses[m]} {a}",
-            "mes_num": m,
-            "ano": a,
-            "receitas": float(receitas),
-            "despesas": float(despesas),
-            "saldo": float(receitas) - float(despesas),
-            "economia": round(
-                (float(receitas) - float(despesas)) / float(receitas) * 100, 1
-            ) if float(receitas) > 0 else 0,
-        })
+        resultado.append(
+            {
+                "mes": f"{nomes_meses[m]} {a}",
+                "mes_num": m,
+                "ano": a,
+                "receitas": float(receitas),
+                "despesas": float(despesas),
+                "saldo": float(receitas) - float(despesas),
+                "economia": round(
+                    (float(receitas) - float(despesas)) / float(receitas) * 100, 1
+                )
+                if float(receitas) > 0
+                else 0,
+            }
+        )
 
     return resultado
 
@@ -1083,29 +1610,45 @@ def listar_orcamentos(
     ano: int = Query(default=None),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
 ):
     hoje = date.today()
     if not mes:
         mes = hoje.month
     if not ano:
         ano = hoje.year
-    user_ids = get_account_user_ids(user, db)
-    return db.query(OrcamentoCategoria).filter(
-        (OrcamentoCategoria.user_id.in_(user_ids)) | (OrcamentoCategoria.user_id == None),
-        OrcamentoCategoria.mes == mes,
-        OrcamentoCategoria.ano == ano,
-    ).all()
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
+    return (
+        db.query(OrcamentoCategoria)
+        .filter(
+            (OrcamentoCategoria.user_id.in_(user_ids))
+            | (OrcamentoCategoria.user_id == None),
+            OrcamentoCategoria.mes == mes,
+            OrcamentoCategoria.ano == ano,
+        )
+        .all()
+    )
 
 
 @app.post("/api/orcamento", response_model=OrcamentoResponse, status_code=201)
-def criar_orcamento(orc: OrcamentoCreate, user: User = Depends(require_user), db: Session = Depends(get_db)):
-    user_ids = get_account_user_ids(user, db)
-    existente = db.query(OrcamentoCategoria).filter(
-        (OrcamentoCategoria.user_id.in_(user_ids)) | (OrcamentoCategoria.user_id == None),
-        OrcamentoCategoria.categoria == orc.categoria,
-        OrcamentoCategoria.mes == orc.mes,
-        OrcamentoCategoria.ano == orc.ano,
-    ).first()
+def criar_orcamento(
+    orc: OrcamentoCreate,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
+):
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
+    existente = (
+        db.query(OrcamentoCategoria)
+        .filter(
+            (OrcamentoCategoria.user_id.in_(user_ids))
+            | (OrcamentoCategoria.user_id == None),
+            OrcamentoCategoria.categoria == orc.categoria,
+            OrcamentoCategoria.mes == orc.mes,
+            OrcamentoCategoria.ano == orc.ano,
+        )
+        .first()
+    )
     if existente:
         existente.limite = orc.limite
         db.commit()
@@ -1119,12 +1662,22 @@ def criar_orcamento(orc: OrcamentoCreate, user: User = Depends(require_user), db
 
 
 @app.delete("/api/orcamento/{orc_id}", status_code=204)
-def deletar_orcamento(orc_id: int, user: User = Depends(require_user), db: Session = Depends(get_db)):
-    user_ids = get_account_user_ids(user, db)
-    orc = db.query(OrcamentoCategoria).filter(
-        OrcamentoCategoria.id == orc_id,
-        (OrcamentoCategoria.user_id.in_(user_ids)) | (OrcamentoCategoria.user_id == None),
-    ).first()
+def deletar_orcamento(
+    orc_id: int,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
+):
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
+    orc = (
+        db.query(OrcamentoCategoria)
+        .filter(
+            OrcamentoCategoria.id == orc_id,
+            (OrcamentoCategoria.user_id.in_(user_ids))
+            | (OrcamentoCategoria.user_id == None),
+        )
+        .first()
+    )
     if not orc:
         raise HTTPException(status_code=404, detail="Orçamento não encontrado")
     db.delete(orc)
@@ -1137,53 +1690,79 @@ def orcamento_resumo(
     ano: int = Query(default=None),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
 ):
     hoje = date.today()
     if not mes:
         mes = hoje.month
     if not ano:
         ano = hoje.year
-    user_ids = get_account_user_ids(user, db)
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
     uid_filter_d = (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None)
 
-    orcamentos = db.query(OrcamentoCategoria).filter(
-        (OrcamentoCategoria.user_id.in_(user_ids)) | (OrcamentoCategoria.user_id == None),
-        OrcamentoCategoria.mes == mes,
-        OrcamentoCategoria.ano == ano,
-    ).all()
+    orcamentos = (
+        db.query(OrcamentoCategoria)
+        .filter(
+            (OrcamentoCategoria.user_id.in_(user_ids))
+            | (OrcamentoCategoria.user_id == None),
+            OrcamentoCategoria.mes == mes,
+            OrcamentoCategoria.ano == ano,
+        )
+        .all()
+    )
 
     resultado = []
     for orc in orcamentos:
-        gasto = db.query(func.coalesce(func.sum(Despesa.valor), 0)).filter(
-            uid_filter_d,
-            Despesa.categoria == orc.categoria,
-            extract("month", Despesa.data_vencimento) == mes,
-            extract("year", Despesa.data_vencimento) == ano,
-        ).scalar()
+        gasto = (
+            db.query(func.coalesce(func.sum(Despesa.valor), 0))
+            .filter(
+                uid_filter_d,
+                Despesa.categoria == orc.categoria,
+                extract("month", Despesa.data_vencimento) == mes,
+                extract("year", Despesa.data_vencimento) == ano,
+            )
+            .scalar()
+        )
 
-        resultado.append({
-            "id": orc.id,
-            "categoria": orc.categoria,
-            "limite": orc.limite,
-            "gasto": float(gasto),
-            "restante": orc.limite - float(gasto),
-            "percentual": round(float(gasto) / orc.limite * 100, 1) if orc.limite > 0 else 0,
-        })
+        resultado.append(
+            {
+                "id": orc.id,
+                "categoria": orc.categoria,
+                "limite": orc.limite,
+                "gasto": float(gasto),
+                "restante": orc.limite - float(gasto),
+                "percentual": round(float(gasto) / orc.limite * 100, 1)
+                if orc.limite > 0
+                else 0,
+            }
+        )
 
     return resultado
 
 
 # ==================== METAS ====================
 @app.get("/api/metas", response_model=List[MetaResponse])
-def listar_metas(user: User = Depends(require_user), db: Session = Depends(get_db)):
-    user_ids = get_account_user_ids(user, db)
-    return db.query(Meta).filter(
-        (Meta.user_id.in_(user_ids)) | (Meta.user_id == None)
-    ).order_by(Meta.concluida.asc(), Meta.prazo.asc()).all()
+def listar_metas(
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
+):
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
+    return (
+        db.query(Meta)
+        .filter((Meta.user_id.in_(user_ids)) | (Meta.user_id == None))
+        .order_by(Meta.concluida.asc(), Meta.prazo.asc())
+        .all()
+    )
 
 
 @app.post("/api/metas", response_model=MetaResponse, status_code=201)
-def criar_meta(meta: MetaCreate, user: User = Depends(require_user), db: Session = Depends(get_db)):
+def criar_meta(
+    meta: MetaCreate,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
+):
     db_meta = Meta(**meta.model_dump(), user_id=user.id)
     db.add(db_meta)
     db.commit()
@@ -1192,12 +1771,21 @@ def criar_meta(meta: MetaCreate, user: User = Depends(require_user), db: Session
 
 
 @app.put("/api/metas/{meta_id}", response_model=MetaResponse)
-def atualizar_meta(meta_id: int, meta: MetaUpdate, user: User = Depends(require_user), db: Session = Depends(get_db)):
-    user_ids = get_account_user_ids(user, db)
-    db_meta = db.query(Meta).filter(
-        Meta.id == meta_id,
-        (Meta.user_id.in_(user_ids)) | (Meta.user_id == None)
-    ).first()
+def atualizar_meta(
+    meta_id: int,
+    meta: MetaUpdate,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
+):
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
+    db_meta = (
+        db.query(Meta)
+        .filter(
+            Meta.id == meta_id, (Meta.user_id.in_(user_ids)) | (Meta.user_id == None)
+        )
+        .first()
+    )
     if not db_meta:
         raise HTTPException(status_code=404, detail="Meta não encontrada")
     update_data = meta.model_dump(exclude_unset=True)
@@ -1209,16 +1797,288 @@ def atualizar_meta(meta_id: int, meta: MetaUpdate, user: User = Depends(require_
 
 
 @app.delete("/api/metas/{meta_id}", status_code=204)
-def deletar_meta(meta_id: int, user: User = Depends(require_user), db: Session = Depends(get_db)):
-    user_ids = get_account_user_ids(user, db)
-    db_meta = db.query(Meta).filter(
-        Meta.id == meta_id,
-        (Meta.user_id.in_(user_ids)) | (Meta.user_id == None)
-    ).first()
+def deletar_meta(
+    meta_id: int,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
+):
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
+    db_meta = (
+        db.query(Meta)
+        .filter(
+            Meta.id == meta_id, (Meta.user_id.in_(user_ids)) | (Meta.user_id == None)
+        )
+        .first()
+    )
     if not db_meta:
         raise HTTPException(status_code=404, detail="Meta não encontrada")
     db.delete(db_meta)
     db.commit()
+
+
+# ==================== ADMIN METRICS ====================
+@app.get("/api/admin/metrics")
+def admin_metrics(
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    """Get business metrics (admin only)"""
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Acesso apenas para administradores"
+        )
+
+    total_users = db.query(User).count()
+    hoje = date.today()
+    mes = hoje.month
+    ano = hoje.year
+
+    users_this_month = (
+        db.query(User)
+        .filter(
+            extract("month", User.created_at) == mes,
+            extract("year", User.created_at) == ano,
+        )
+        .count()
+    )
+
+    free_users = db.query(User).filter(User.plan == "free").count()
+    pro_users = db.query(User).filter(User.plan == "pro").count()
+    premium_users = db.query(User).filter(User.plan == "premium").count()
+
+    total_paid = pro_users + premium_users
+    conversion_rate = (total_paid / total_users * 100) if total_users > 0 else 0
+
+    mrr = (pro_users * 19.90) + (premium_users * 29.90)
+
+    return {
+        "users": {
+            "total": total_users,
+            "new_this_month": users_this_month,
+            "active_paid": total_paid,
+            "free_users": free_users,
+        },
+        "subscriptions": {
+            "total_paid": total_paid,
+            "pro": pro_users,
+            "premium": premium_users,
+            "conversion_rate": round(conversion_rate, 2),
+        },
+        "revenue": {
+            "mrr": mrr,
+            "total_lifetime": mrr * 12,
+            "this_month": mrr,
+        },
+        "metrics": {
+            "churn_rate": 0.0,
+            "arpu": mrr / total_users if total_users > 0 else 0,
+        },
+    }
+
+
+@app.get("/api/admin/engagement")
+def admin_engagement(
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    """Get engagement metrics (admin only)"""
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Acesso apenas para administradores"
+        )
+
+    total_users = db.query(User).count()
+    hoje = date.today()
+    limite_30d = hoje - timedelta(days=30)
+
+    active_users_30d = (
+        db.query(User)
+        .filter(
+            User.is_active == True,
+        )
+        .count()
+    )
+
+    total_receitas = db.query(Receita).count()
+    total_despesas = db.query(Despesa).count()
+    total_transacoes = total_receitas + total_despesas
+
+    avg_transactions = total_transacoes / total_users if total_users > 0 else 0
+    engagement_rate = (active_users_30d / total_users * 100) if total_users > 0 else 0
+
+    users_with_goals = db.query(Meta).distinct(Meta.user_id).count()
+    users_with_investments = (
+        db.query(Investimento).distinct(Investimento.user_id).count()
+    )
+
+    return {
+        "active_users_30d": active_users_30d,
+        "engagement_rate": round(engagement_rate, 1),
+        "avg_transactions_per_user": round(avg_transactions, 1),
+        "users_with_goals": users_with_goals,
+        "users_with_investments": users_with_investments,
+    }
+
+
+@app.get("/api/admin/revenue-chart")
+def admin_revenue_chart(
+    meses: int = Query(default=6),
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    """Get revenue chart data (admin only)"""
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Acesso apenas para administradores"
+        )
+
+    hoje = date.today()
+    nomes_meses = [
+        "",
+        "Jan",
+        "Fev",
+        "Mar",
+        "Abr",
+        "Mai",
+        "Jun",
+        "Jul",
+        "Ago",
+        "Set",
+        "Out",
+        "Nov",
+        "Dez",
+    ]
+    resultado = []
+
+    for i in range(meses - 1, -1, -1):
+        d = hoje - timedelta(days=i * 30)
+        m = d.month
+        a = d.year
+
+        receitas = (
+            db.query(func.coalesce(func.sum(Receita.valor), 0))
+            .filter(
+                extract("month", Receita.data) == m,
+                extract("year", Receita.data) == a,
+            )
+            .scalar()
+        )
+
+        despesas = (
+            db.query(func.coalesce(func.sum(Despesa.valor), 0))
+            .filter(
+                extract("month", Despesa.data_vencimento) == m,
+                extract("year", Despesa.data_vencimento) == a,
+            )
+            .scalar()
+        )
+
+        new_subscriptions = (
+            db.query(User)
+            .filter(
+                extract("month", User.created_at) == m,
+                extract("year", User.created_at) == a,
+            )
+            .count()
+        )
+
+        resultado.append(
+            {
+                "month": f"{nomes_meses[m]}/{a}",
+                "revenue": float(receitas),
+                "expenses": float(despesas),
+                "new_subscriptions": new_subscriptions,
+            }
+        )
+
+    return resultado
+
+
+def log_audit(
+    db: Session,
+    user_id: int,
+    user_email: str,
+    action: str,
+    entity_type: str = None,
+    entity_id: int = None,
+    details: str = None,
+):
+    """Helper function to create audit log entries"""
+    audit = AuditLog(
+        user_id=user_id,
+        user_email=user_email,
+        action=action,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        details=details,
+    )
+    db.add(audit)
+    db.commit()
+
+
+@app.get("/api/admin/audit-logs", response_model=List[AuditLogResponse])
+def get_audit_logs(
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    user_id: Optional[int] = None,
+    action: Optional[str] = None,
+):
+    """Get audit logs (admin only)"""
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Acesso apenas para administradores"
+        )
+
+    query = db.query(AuditLog).order_by(AuditLog.created_at.desc())
+
+    if user_id:
+        query = query.filter(AuditLog.user_id == user_id)
+    if action:
+        query = query.filter(AuditLog.action.contains(action))
+
+    return query.offset(skip).limit(limit).all()
+
+
+@app.get("/api/admin/users/{target_user_id}/activity")
+def get_user_activity(
+    target_user_id: int,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+    limit: int = Query(50, ge=1, le=200),
+):
+    """Get activity logs for a specific user (admin only)"""
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Acesso apenas para administradores"
+        )
+
+    target = db.query(User).filter(User.id == target_user_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    logs = (
+        db.query(AuditLog)
+        .filter(AuditLog.user_id == target_user_id)
+        .order_by(AuditLog.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    return {
+        "user": {
+            "id": target.id,
+            "nome": target.nome,
+            "email": target.email,
+            "role": target.role,
+            "plan": target.plan,
+            "is_active": target.is_active,
+            "created_at": target.created_at,
+        },
+        "activity": logs,
+    }
 
 
 # ==================== SEED DATA ====================
@@ -1233,25 +2093,128 @@ def seed_data(db: Session = Depends(get_db)):
         return {"message": "Dados já existem"}
 
     receitas = [
-        Receita(descricao="Salário Mensal", categoria="Salário", valor=5500.00, data=date(ano, mes, 5)),
-        Receita(descricao="Freelance Website", categoria="Freelance", valor=2000.00, data=date(ano, mes, 15)),
-        Receita(descricao="Rendimento CDB", categoria="Investimentos", valor=350.00, data=date(ano, mes, 1)),
-        Receita(descricao="Bônus Trimestral", categoria="Bônus", valor=1200.00, data=date(ano, mes, 20)),
+        Receita(
+            descricao="Salário Mensal",
+            categoria="Salário",
+            valor=5500.00,
+            data=date(ano, mes, 5),
+        ),
+        Receita(
+            descricao="Freelance Website",
+            categoria="Freelance",
+            valor=2000.00,
+            data=date(ano, mes, 15),
+        ),
+        Receita(
+            descricao="Rendimento CDB",
+            categoria="Investimentos",
+            valor=350.00,
+            data=date(ano, mes, 1),
+        ),
+        Receita(
+            descricao="Bônus Trimestral",
+            categoria="Bônus",
+            valor=1200.00,
+            data=date(ano, mes, 20),
+        ),
     ]
 
     despesas = [
-        Despesa(descricao="Aluguel Apartamento", categoria="Aluguel", valor=1800.00, data_vencimento=date(ano, mes, 10), pago=True, data_pagamento=date(ano, mes, 9)),
-        Despesa(descricao="Supermercado Extra", categoria="Hipermercado", valor=650.00, data_vencimento=date(ano, mes, 5), pago=True, data_pagamento=date(ano, mes, 5)),
-        Despesa(descricao="Conta de Gás", categoria="Gás", valor=85.00, data_vencimento=date(ano, mes, 12), pago=True, data_pagamento=date(ano, mes, 12)),
-        Despesa(descricao="Parcela Notebook", categoria="Crédito", valor=450.00, data_vencimento=date(ano, mes, 15), parcela_atual=3, parcela_total=10, pago=False),
-        Despesa(descricao="Uber Mensal", categoria="Uber/Transporte", valor=280.00, data_vencimento=date(ano, mes, 20), pago=False),
-        Despesa(descricao="Financiamento Carro", categoria="Financiamento", valor=1200.00, data_vencimento=date(ano, mes, 18), parcela_atual=24, parcela_total=48, pago=False),
-        Despesa(descricao="Açougue", categoria="Carne", valor=320.00, data_vencimento=date(ano, mes, 8), pago=True, data_pagamento=date(ano, mes, 8)),
-        Despesa(descricao="Roupas Shopping", categoria="Vestuário", valor=350.00, data_vencimento=date(ano, mes, 22), parcela_atual=1, parcela_total=3, pago=False),
-        Despesa(descricao="Empréstimo Pessoal", categoria="Empréstimo", valor=500.00, data_vencimento=date(ano, mes, 25), pago=False),
-        Despesa(descricao="Restaurante", categoria="Alimentação", valor=180.00, data_vencimento=date(ano, mes, 14), pago=True, data_pagamento=date(ano, mes, 14)),
-        Despesa(descricao="Locação Equipamento", categoria="Locação", valor=200.00, data_vencimento=date(ano, mes, 28), pago=False),
-        Despesa(descricao="Diversos", categoria="Diversos", valor=150.00, data_vencimento=date(ano, mes, 16), pago=False),
+        Despesa(
+            descricao="Aluguel Apartamento",
+            categoria="Aluguel",
+            valor=1800.00,
+            data_vencimento=date(ano, mes, 10),
+            pago=True,
+            data_pagamento=date(ano, mes, 9),
+        ),
+        Despesa(
+            descricao="Supermercado Extra",
+            categoria="Hipermercado",
+            valor=650.00,
+            data_vencimento=date(ano, mes, 5),
+            pago=True,
+            data_pagamento=date(ano, mes, 5),
+        ),
+        Despesa(
+            descricao="Conta de Gás",
+            categoria="Gás",
+            valor=85.00,
+            data_vencimento=date(ano, mes, 12),
+            pago=True,
+            data_pagamento=date(ano, mes, 12),
+        ),
+        Despesa(
+            descricao="Parcela Notebook",
+            categoria="Crédito",
+            valor=450.00,
+            data_vencimento=date(ano, mes, 15),
+            parcela_atual=3,
+            parcela_total=10,
+            pago=False,
+        ),
+        Despesa(
+            descricao="Uber Mensal",
+            categoria="Uber/Transporte",
+            valor=280.00,
+            data_vencimento=date(ano, mes, 20),
+            pago=False,
+        ),
+        Despesa(
+            descricao="Financiamento Carro",
+            categoria="Financiamento",
+            valor=1200.00,
+            data_vencimento=date(ano, mes, 18),
+            parcela_atual=24,
+            parcela_total=48,
+            pago=False,
+        ),
+        Despesa(
+            descricao="Açougue",
+            categoria="Carne",
+            valor=320.00,
+            data_vencimento=date(ano, mes, 8),
+            pago=True,
+            data_pagamento=date(ano, mes, 8),
+        ),
+        Despesa(
+            descricao="Roupas Shopping",
+            categoria="Vestuário",
+            valor=350.00,
+            data_vencimento=date(ano, mes, 22),
+            parcela_atual=1,
+            parcela_total=3,
+            pago=False,
+        ),
+        Despesa(
+            descricao="Empréstimo Pessoal",
+            categoria="Empréstimo",
+            valor=500.00,
+            data_vencimento=date(ano, mes, 25),
+            pago=False,
+        ),
+        Despesa(
+            descricao="Restaurante",
+            categoria="Alimentação",
+            valor=180.00,
+            data_vencimento=date(ano, mes, 14),
+            pago=True,
+            data_pagamento=date(ano, mes, 14),
+        ),
+        Despesa(
+            descricao="Locação Equipamento",
+            categoria="Locação",
+            valor=200.00,
+            data_vencimento=date(ano, mes, 28),
+            pago=False,
+        ),
+        Despesa(
+            descricao="Diversos",
+            categoria="Diversos",
+            valor=150.00,
+            data_vencimento=date(ano, mes, 16),
+            pago=False,
+        ),
     ]
 
     # Previous month data
@@ -1259,18 +2222,79 @@ def seed_data(db: Session = Depends(get_db)):
     ano_ant = ano if mes > 1 else ano - 1
 
     receitas_ant = [
-        Receita(descricao="Salário Mensal", categoria="Salário", valor=5500.00, data=date(ano_ant, mes_ant, 5)),
-        Receita(descricao="Freelance App", categoria="Freelance", valor=1500.00, data=date(ano_ant, mes_ant, 20)),
-        Receita(descricao="Rendimento CDB", categoria="Investimentos", valor=320.00, data=date(ano_ant, mes_ant, 1)),
+        Receita(
+            descricao="Salário Mensal",
+            categoria="Salário",
+            valor=5500.00,
+            data=date(ano_ant, mes_ant, 5),
+        ),
+        Receita(
+            descricao="Freelance App",
+            categoria="Freelance",
+            valor=1500.00,
+            data=date(ano_ant, mes_ant, 20),
+        ),
+        Receita(
+            descricao="Rendimento CDB",
+            categoria="Investimentos",
+            valor=320.00,
+            data=date(ano_ant, mes_ant, 1),
+        ),
     ]
 
     despesas_ant = [
-        Despesa(descricao="Aluguel Apartamento", categoria="Aluguel", valor=1800.00, data_vencimento=date(ano_ant, mes_ant, 10), pago=True, data_pagamento=date(ano_ant, mes_ant, 9)),
-        Despesa(descricao="Supermercado", categoria="Hipermercado", valor=580.00, data_vencimento=date(ano_ant, mes_ant, 5), pago=True, data_pagamento=date(ano_ant, mes_ant, 5)),
-        Despesa(descricao="Parcela Notebook", categoria="Crédito", valor=450.00, data_vencimento=date(ano_ant, mes_ant, 15), parcela_atual=2, parcela_total=10, pago=True, data_pagamento=date(ano_ant, mes_ant, 15)),
-        Despesa(descricao="Financiamento Carro", categoria="Financiamento", valor=1200.00, data_vencimento=date(ano_ant, mes_ant, 18), parcela_atual=23, parcela_total=48, pago=True, data_pagamento=date(ano_ant, mes_ant, 18)),
-        Despesa(descricao="Uber", categoria="Uber/Transporte", valor=250.00, data_vencimento=date(ano_ant, mes_ant, 20), pago=True, data_pagamento=date(ano_ant, mes_ant, 20)),
-        Despesa(descricao="Alimentação", categoria="Alimentação", valor=200.00, data_vencimento=date(ano_ant, mes_ant, 14), pago=True, data_pagamento=date(ano_ant, mes_ant, 14)),
+        Despesa(
+            descricao="Aluguel Apartamento",
+            categoria="Aluguel",
+            valor=1800.00,
+            data_vencimento=date(ano_ant, mes_ant, 10),
+            pago=True,
+            data_pagamento=date(ano_ant, mes_ant, 9),
+        ),
+        Despesa(
+            descricao="Supermercado",
+            categoria="Hipermercado",
+            valor=580.00,
+            data_vencimento=date(ano_ant, mes_ant, 5),
+            pago=True,
+            data_pagamento=date(ano_ant, mes_ant, 5),
+        ),
+        Despesa(
+            descricao="Parcela Notebook",
+            categoria="Crédito",
+            valor=450.00,
+            data_vencimento=date(ano_ant, mes_ant, 15),
+            parcela_atual=2,
+            parcela_total=10,
+            pago=True,
+            data_pagamento=date(ano_ant, mes_ant, 15),
+        ),
+        Despesa(
+            descricao="Financiamento Carro",
+            categoria="Financiamento",
+            valor=1200.00,
+            data_vencimento=date(ano_ant, mes_ant, 18),
+            parcela_atual=23,
+            parcela_total=48,
+            pago=True,
+            data_pagamento=date(ano_ant, mes_ant, 18),
+        ),
+        Despesa(
+            descricao="Uber",
+            categoria="Uber/Transporte",
+            valor=250.00,
+            data_vencimento=date(ano_ant, mes_ant, 20),
+            pago=True,
+            data_pagamento=date(ano_ant, mes_ant, 20),
+        ),
+        Despesa(
+            descricao="Alimentação",
+            categoria="Alimentação",
+            valor=200.00,
+            data_vencimento=date(ano_ant, mes_ant, 14),
+            pago=True,
+            data_pagamento=date(ano_ant, mes_ant, 14),
+        ),
     ]
 
     for r in receitas + receitas_ant:
@@ -1291,22 +2315,59 @@ def normalize_col(name: str) -> str:
 
 
 COLUMN_MAP_DESPESA = {
-    "descricao": ["descricao", "descrição", "nome", "titulo", "título", "item", "despesa"],
+    "descricao": [
+        "descricao",
+        "descrição",
+        "nome",
+        "titulo",
+        "título",
+        "item",
+        "despesa",
+    ],
     "categoria": ["categoria", "tipo", "group", "grupo"],
     "valor": ["valor", "value", "preco", "preço", "total", "montante", "quantia"],
-    "data_vencimento": ["data", "date", "vencimento", "datavencimento", "data_vencimento", "datadespesa"],
+    "data_vencimento": [
+        "data",
+        "date",
+        "vencimento",
+        "datavencimento",
+        "data_vencimento",
+        "datadespesa",
+    ],
     "pago": ["pago", "paid", "status", "situacao", "situação", "quitado"],
-    "observacoes": ["observacoes", "observações", "obs", "notas", "notes", "comentario"],
+    "observacoes": [
+        "observacoes",
+        "observações",
+        "obs",
+        "notas",
+        "notes",
+        "comentario",
+    ],
     "parcela_atual": ["parcelaatual", "parcela_atual", "parcela", "numparcela"],
     "parcela_total": ["parcelatotal", "parcela_total", "totalparcelas", "numparcelas"],
 }
 
 COLUMN_MAP_RECEITA = {
-    "descricao": ["descricao", "descrição", "nome", "titulo", "título", "item", "receita"],
+    "descricao": [
+        "descricao",
+        "descrição",
+        "nome",
+        "titulo",
+        "título",
+        "item",
+        "receita",
+    ],
     "categoria": ["categoria", "tipo", "group", "grupo", "fonte"],
     "valor": ["valor", "value", "preco", "preço", "total", "montante", "quantia"],
     "data": ["data", "date", "datarecebimento", "data_recebimento", "datarecebida"],
-    "observacoes": ["observacoes", "observações", "obs", "notas", "notes", "comentario"],
+    "observacoes": [
+        "observacoes",
+        "observações",
+        "obs",
+        "notas",
+        "notes",
+        "comentario",
+    ],
 }
 
 
@@ -1378,11 +2439,15 @@ async def import_preview(
                 except UnicodeDecodeError:
                     continue
             else:
-                raise HTTPException(status_code=400, detail="Não foi possível ler o arquivo CSV")
+                raise HTTPException(
+                    status_code=400, detail="Não foi possível ler o arquivo CSV"
+                )
         elif filename.endswith((".xlsx", ".xls")):
             df = pd.read_excel(io.BytesIO(content), engine="openpyxl")
         else:
-            raise HTTPException(status_code=400, detail="Formato não suportado. Use .xlsx, .xls ou .csv")
+            raise HTTPException(
+                status_code=400, detail="Formato não suportado. Use .xlsx, .xls ou .csv"
+            )
     except HTTPException:
         raise
     except Exception as e:
@@ -1396,7 +2461,9 @@ async def import_preview(
 
     preview_rows = []
     for _, row in df.head(10).iterrows():
-        preview_rows.append({str(c): (str(v) if pd.notna(v) else "") for c, v in row.items()})
+        preview_rows.append(
+            {str(c): (str(v) if pd.notna(v) else "") for c, v in row.items()}
+        )
 
     return {
         "columns": list(df.columns.astype(str)),
@@ -1426,11 +2493,15 @@ async def import_execute(
                 except UnicodeDecodeError:
                     continue
             else:
-                raise HTTPException(status_code=400, detail="Não foi possível ler o CSV")
+                raise HTTPException(
+                    status_code=400, detail="Não foi possível ler o CSV"
+                )
         elif filename.endswith((".xlsx", ".xls")):
             df = pd.read_excel(io.BytesIO(content), engine="openpyxl")
         else:
-            raise HTTPException(status_code=400, detail="Formato não suportado. Use .xlsx, .xls ou .csv")
+            raise HTTPException(
+                status_code=400, detail="Formato não suportado. Use .xlsx, .xls ou .csv"
+            )
     except HTTPException:
         raise
     except Exception as e:
@@ -1456,7 +2527,9 @@ async def import_execute(
         parc_total_col = mapping.get("parcela_total")
 
         if not val_col:
-            raise HTTPException(status_code=400, detail="Coluna de valor não encontrada na planilha")
+            raise HTTPException(
+                status_code=400, detail="Coluna de valor não encontrada na planilha"
+            )
 
         for idx, row in df.iterrows():
             try:
@@ -1473,7 +2546,9 @@ async def import_execute(
                 if not categoria or categoria == "nan":
                     categoria = "Diversos"
 
-                data_venc = parse_date_value(row.get(date_col)) if date_col else date.today()
+                data_venc = (
+                    parse_date_value(row.get(date_col)) if date_col else date.today()
+                )
                 if not data_venc:
                     data_venc = date.today()
 
@@ -1519,7 +2594,9 @@ async def import_execute(
         obs_col = mapping.get("observacoes")
 
         if not val_col:
-            raise HTTPException(status_code=400, detail="Coluna de valor não encontrada na planilha")
+            raise HTTPException(
+                status_code=400, detail="Coluna de valor não encontrada na planilha"
+            )
 
         for idx, row in df.iterrows():
             try:
@@ -1536,7 +2613,9 @@ async def import_execute(
                 if not categoria or categoria == "nan":
                     categoria = "Outros"
 
-                data_rec = parse_date_value(row.get(date_col)) if date_col else date.today()
+                data_rec = (
+                    parse_date_value(row.get(date_col)) if date_col else date.today()
+                )
                 if not data_rec:
                     data_rec = date.today()
 
@@ -1581,7 +2660,9 @@ def chat_endpoint(req: ChatRequest, db: Session = Depends(get_db)):
 
 
 @app.post("/api/chat/upload", response_model=ChatResponse)
-async def chat_upload_endpoint(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def chat_upload_endpoint(
+    file: UploadFile = File(...), db: Session = Depends(get_db)
+):
     if not file.filename:
         raise HTTPException(status_code=400, detail="Nenhum arquivo enviado")
 
@@ -1613,72 +2694,116 @@ def export_excel(
     ano: int = Query(default=None),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
 ):
     hoje = date.today()
     if not mes:
         mes = hoje.month
     if not ano:
         ano = hoje.year
-    user_ids = get_account_user_ids(user, db)
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
 
-    receitas = db.query(Receita).filter(
-        (Receita.user_id.in_(user_ids)) | (Receita.user_id == None),
-        extract("month", Receita.data) == mes,
-        extract("year", Receita.data) == ano,
-    ).all()
+    receitas = (
+        db.query(Receita)
+        .filter(
+            (Receita.user_id.in_(user_ids)) | (Receita.user_id == None),
+            extract("month", Receita.data) == mes,
+            extract("year", Receita.data) == ano,
+        )
+        .all()
+    )
 
-    despesas = db.query(Despesa).filter(
-        (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None),
-        extract("month", Despesa.data_vencimento) == mes,
-        extract("year", Despesa.data_vencimento) == ano,
-    ).all()
+    despesas = (
+        db.query(Despesa)
+        .filter(
+            (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None),
+            extract("month", Despesa.data_vencimento) == mes,
+            extract("year", Despesa.data_vencimento) == ano,
+        )
+        .all()
+    )
 
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         # Receitas sheet
         if receitas:
-            df_rec = pd.DataFrame([{
-                "Descrição": r.descricao,
-                "Categoria": r.categoria,
-                "Valor": r.valor,
-                "Data": r.data.strftime("%d/%m/%Y") if r.data else "",
-                "Observações": r.observacoes or "",
-            } for r in receitas])
+            df_rec = pd.DataFrame(
+                [
+                    {
+                        "Descrição": r.descricao,
+                        "Categoria": r.categoria,
+                        "Valor": r.valor,
+                        "Data": r.data.strftime("%d/%m/%Y") if r.data else "",
+                        "Observações": r.observacoes or "",
+                    }
+                    for r in receitas
+                ]
+            )
             df_rec.to_excel(writer, sheet_name="Receitas", index=False)
         else:
-            pd.DataFrame({"Mensagem": ["Nenhuma receita neste mês"]}).to_excel(writer, sheet_name="Receitas", index=False)
+            pd.DataFrame({"Mensagem": ["Nenhuma receita neste mês"]}).to_excel(
+                writer, sheet_name="Receitas", index=False
+            )
 
         # Despesas sheet
         if despesas:
-            df_desp = pd.DataFrame([{
-                "Descrição": d.descricao,
-                "Categoria": d.categoria,
-                "Valor": d.valor,
-                "Vencimento": d.data_vencimento.strftime("%d/%m/%Y") if d.data_vencimento else "",
-                "Pago": "Sim" if d.pago else "Não",
-                "Parcela": f"{d.parcela_atual}/{d.parcela_total}" if d.parcela_total else "",
-                "Observações": d.observacoes or "",
-            } for d in despesas])
+            df_desp = pd.DataFrame(
+                [
+                    {
+                        "Descrição": d.descricao,
+                        "Categoria": d.categoria,
+                        "Valor": d.valor,
+                        "Vencimento": d.data_vencimento.strftime("%d/%m/%Y")
+                        if d.data_vencimento
+                        else "",
+                        "Pago": "Sim" if d.pago else "Não",
+                        "Parcela": f"{d.parcela_atual}/{d.parcela_total}"
+                        if d.parcela_total
+                        else "",
+                        "Observações": d.observacoes or "",
+                    }
+                    for d in despesas
+                ]
+            )
             df_desp.to_excel(writer, sheet_name="Despesas", index=False)
         else:
-            pd.DataFrame({"Mensagem": ["Nenhuma despesa neste mês"]}).to_excel(writer, sheet_name="Despesas", index=False)
+            pd.DataFrame({"Mensagem": ["Nenhuma despesa neste mês"]}).to_excel(
+                writer, sheet_name="Despesas", index=False
+            )
 
         # Resumo sheet
         total_rec = sum(r.valor for r in receitas)
         total_desp = sum(d.valor for d in despesas)
         total_pagas = sum(d.valor for d in despesas if d.pago)
-        df_resumo = pd.DataFrame([{
-            "Total Receitas": total_rec,
-            "Total Despesas": total_desp,
-            "Saldo": total_rec - total_desp,
-            "Despesas Pagas": total_pagas,
-            "Despesas Pendentes": total_desp - total_pagas,
-        }])
+        df_resumo = pd.DataFrame(
+            [
+                {
+                    "Total Receitas": total_rec,
+                    "Total Despesas": total_desp,
+                    "Saldo": total_rec - total_desp,
+                    "Despesas Pagas": total_pagas,
+                    "Despesas Pendentes": total_desp - total_pagas,
+                }
+            ]
+        )
         df_resumo.to_excel(writer, sheet_name="Resumo", index=False)
 
     output.seek(0)
-    nomes_meses = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-                   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+    nomes_meses = [
+        "",
+        "Janeiro",
+        "Fevereiro",
+        "Março",
+        "Abril",
+        "Maio",
+        "Junho",
+        "Julho",
+        "Agosto",
+        "Setembro",
+        "Outubro",
+        "Novembro",
+        "Dezembro",
+    ]
     filename = f"Relatorio_{nomes_meses[mes]}_{ano}.xlsx"
 
     return StreamingResponse(
@@ -1695,47 +2820,89 @@ def export_csv(
     ano: int = Query(default=None),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
 ):
     hoje = date.today()
     if not mes:
         mes = hoje.month
     if not ano:
         ano = hoje.year
-    user_ids = get_account_user_ids(user, db)
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
 
     output = io.StringIO()
 
     if tipo == "receitas":
-        receitas = db.query(Receita).filter(
-            (Receita.user_id.in_(user_ids)) | (Receita.user_id == None),
-            extract("month", Receita.data) == mes,
-            extract("year", Receita.data) == ano,
-        ).all()
-        df = pd.DataFrame([{
-            "Descrição": r.descricao,
-            "Categoria": r.categoria,
-            "Valor": r.valor,
-            "Data": r.data.strftime("%d/%m/%Y") if r.data else "",
-        } for r in receitas]) if receitas else pd.DataFrame()
+        receitas = (
+            db.query(Receita)
+            .filter(
+                (Receita.user_id.in_(user_ids)) | (Receita.user_id == None),
+                extract("month", Receita.data) == mes,
+                extract("year", Receita.data) == ano,
+            )
+            .all()
+        )
+        df = (
+            pd.DataFrame(
+                [
+                    {
+                        "Descrição": r.descricao,
+                        "Categoria": r.categoria,
+                        "Valor": r.valor,
+                        "Data": r.data.strftime("%d/%m/%Y") if r.data else "",
+                    }
+                    for r in receitas
+                ]
+            )
+            if receitas
+            else pd.DataFrame()
+        )
     else:
-        despesas = db.query(Despesa).filter(
-            (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None),
-            extract("month", Despesa.data_vencimento) == mes,
-            extract("year", Despesa.data_vencimento) == ano,
-        ).all()
-        df = pd.DataFrame([{
-            "Descrição": d.descricao,
-            "Categoria": d.categoria,
-            "Valor": d.valor,
-            "Vencimento": d.data_vencimento.strftime("%d/%m/%Y") if d.data_vencimento else "",
-            "Pago": "Sim" if d.pago else "Não",
-        } for d in despesas]) if despesas else pd.DataFrame()
+        despesas = (
+            db.query(Despesa)
+            .filter(
+                (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None),
+                extract("month", Despesa.data_vencimento) == mes,
+                extract("year", Despesa.data_vencimento) == ano,
+            )
+            .all()
+        )
+        df = (
+            pd.DataFrame(
+                [
+                    {
+                        "Descrição": d.descricao,
+                        "Categoria": d.categoria,
+                        "Valor": d.valor,
+                        "Vencimento": d.data_vencimento.strftime("%d/%m/%Y")
+                        if d.data_vencimento
+                        else "",
+                        "Pago": "Sim" if d.pago else "Não",
+                    }
+                    for d in despesas
+                ]
+            )
+            if despesas
+            else pd.DataFrame()
+        )
 
     df.to_csv(output, index=False, encoding="utf-8-sig")
     output.seek(0)
 
-    nomes_meses = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
-                   "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+    nomes_meses = [
+        "",
+        "Jan",
+        "Fev",
+        "Mar",
+        "Abr",
+        "Mai",
+        "Jun",
+        "Jul",
+        "Ago",
+        "Set",
+        "Out",
+        "Nov",
+        "Dez",
+    ]
     filename = f"{tipo}_{nomes_meses[mes]}_{ano}.csv"
 
     return StreamingResponse(
@@ -1751,57 +2918,79 @@ def global_search(
     q: str = Query(..., min_length=1),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
 ):
     query = f"%{q}%"
-    user_ids = get_account_user_ids(user, db)
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
 
-    receitas = db.query(Receita).filter(
-        (Receita.user_id.in_(user_ids)) | (Receita.user_id == None),
-        Receita.descricao.ilike(query) | Receita.categoria.ilike(query)
-    ).limit(10).all()
+    receitas = (
+        db.query(Receita)
+        .filter(
+            (Receita.user_id.in_(user_ids)) | (Receita.user_id == None),
+            Receita.descricao.ilike(query) | Receita.categoria.ilike(query),
+        )
+        .limit(10)
+        .all()
+    )
 
-    despesas = db.query(Despesa).filter(
-        (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None),
-        Despesa.descricao.ilike(query) | Despesa.categoria.ilike(query)
-    ).limit(10).all()
+    despesas = (
+        db.query(Despesa)
+        .filter(
+            (Despesa.user_id.in_(user_ids)) | (Despesa.user_id == None),
+            Despesa.descricao.ilike(query) | Despesa.categoria.ilike(query),
+        )
+        .limit(10)
+        .all()
+    )
 
     results = []
     for r in receitas:
-        results.append({
-            "id": r.id,
-            "tipo": "receita",
-            "descricao": r.descricao,
-            "categoria": r.categoria,
-            "valor": r.valor,
-            "data": r.data.isoformat() if r.data else None,
-        })
+        results.append(
+            {
+                "id": r.id,
+                "tipo": "receita",
+                "descricao": r.descricao,
+                "categoria": r.categoria,
+                "valor": r.valor,
+                "data": r.data.isoformat() if r.data else None,
+            }
+        )
     for d in despesas:
-        results.append({
-            "id": d.id,
-            "tipo": "despesa",
-            "descricao": d.descricao,
-            "categoria": d.categoria,
-            "valor": d.valor,
-            "data": d.data_vencimento.isoformat() if d.data_vencimento else None,
-            "pago": d.pago,
-        })
+        results.append(
+            {
+                "id": d.id,
+                "tipo": "despesa",
+                "descricao": d.descricao,
+                "categoria": d.categoria,
+                "valor": d.valor,
+                "data": d.data_vencimento.isoformat() if d.data_vencimento else None,
+                "pago": d.pago,
+            }
+        )
 
-    investimentos = db.query(Investimento).filter(
-        (Investimento.user_id.in_(user_ids)) | (Investimento.user_id == None),
-        Investimento.ticker.ilike(query) | Investimento.observacoes.ilike(query)
-    ).limit(10).all()
+    investimentos = (
+        db.query(Investimento)
+        .filter(
+            (Investimento.user_id.in_(user_ids)) | (Investimento.user_id == None),
+            Investimento.ticker.ilike(query) | Investimento.observacoes.ilike(query),
+        )
+        .limit(10)
+        .all()
+    )
 
     for inv in investimentos:
-        results.append({
-            "id": inv.id,
-            "tipo": "investimento",
-            "descricao": inv.ticker,
-            "categoria": inv.tipo,
-            "valor": inv.quantidade * inv.preco_medio,
-            "data": inv.data_compra.isoformat() if inv.data_compra else None,
-            "quantidade": inv.quantidade,
-            "preco_medio": inv.preco_medio,
-        })
+        results.append(
+            {
+                "id": inv.id,
+                "tipo": "investimento",
+                "descricao": inv.ticker,
+                "categoria": inv.tipo,
+                "valor": inv.quantidade * inv.preco_medio,
+                "data": inv.data_compra.isoformat() if inv.data_compra else None,
+                "quantidade": inv.quantidade,
+                "preco_medio": inv.preco_medio,
+            }
+        )
 
     results.sort(key=lambda x: x.get("data") or "", reverse=True)
     return results
@@ -1812,16 +3001,31 @@ def global_search(
 BRAPI_BASE = "https://brapi.dev/api"
 BRAPI_TOKEN = os.environ.get("BRAPI_TOKEN", "")
 
+
+
+
+
 @app.get("/api/investimentos", response_model=List[InvestimentoResponse])
-def listar_investimentos(user: User = Depends(require_user), db: Session = Depends(get_db)):
-    user_ids = get_account_user_ids(user, db)
-    return db.query(Investimento).filter(
-        (Investimento.user_id.in_(user_ids)) | (Investimento.user_id == None)
-    ).order_by(Investimento.data_compra.desc()).all()
+def listar_investimentos(
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
+):
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
+    return (
+        db.query(Investimento)
+        .filter((Investimento.user_id.in_(user_ids)) | (Investimento.user_id == None))
+        .order_by(Investimento.data_compra.desc())
+        .all()
+    )
 
 
 @app.post("/api/investimentos", response_model=InvestimentoResponse)
-def criar_investimento(data: InvestimentoCreate, user: User = Depends(require_user), db: Session = Depends(get_db)):
+def criar_investimento(
+    data: InvestimentoCreate,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
     inv = Investimento(
         user_id=user.id,
         ticker=data.ticker.upper().strip(),
@@ -1838,12 +3042,21 @@ def criar_investimento(data: InvestimentoCreate, user: User = Depends(require_us
 
 
 @app.put("/api/investimentos/{inv_id}", response_model=InvestimentoResponse)
-def atualizar_investimento(inv_id: int, data: InvestimentoUpdate, user: User = Depends(require_user), db: Session = Depends(get_db)):
+def atualizar_investimento(
+    inv_id: int,
+    data: InvestimentoUpdate,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
     user_ids = get_account_user_ids(user, db)
-    inv = db.query(Investimento).filter(
-        Investimento.id == inv_id,
-        (Investimento.user_id.in_(user_ids)) | (Investimento.user_id == None)
-    ).first()
+    inv = (
+        db.query(Investimento)
+        .filter(
+            Investimento.id == inv_id,
+            (Investimento.user_id.in_(user_ids)) | (Investimento.user_id == None),
+        )
+        .first()
+    )
     if not inv:
         raise HTTPException(status_code=404, detail="Investimento não encontrado")
     for field, value in data.dict(exclude_unset=True).items():
@@ -1857,12 +3070,18 @@ def atualizar_investimento(inv_id: int, data: InvestimentoUpdate, user: User = D
 
 
 @app.delete("/api/investimentos/{inv_id}", status_code=204)
-def deletar_investimento(inv_id: int, user: User = Depends(require_user), db: Session = Depends(get_db)):
+def deletar_investimento(
+    inv_id: int, user: User = Depends(require_user), db: Session = Depends(get_db)
+):
     user_ids = get_account_user_ids(user, db)
-    inv = db.query(Investimento).filter(
-        Investimento.id == inv_id,
-        (Investimento.user_id.in_(user_ids)) | (Investimento.user_id == None)
-    ).first()
+    inv = (
+        db.query(Investimento)
+        .filter(
+            Investimento.id == inv_id,
+            (Investimento.user_id.in_(user_ids)) | (Investimento.user_id == None),
+        )
+        .first()
+    )
     if not inv:
         raise HTTPException(status_code=404, detail="Investimento não encontrado")
     db.delete(inv)
@@ -1878,9 +3097,13 @@ async def get_cotacao(ticker: str):
         if BRAPI_TOKEN:
             params["token"] = BRAPI_TOKEN
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(f"{BRAPI_BASE}/quote/{ticker.upper()}", params=params)
+            resp = await client.get(
+                f"{BRAPI_BASE}/quote/{ticker.upper()}", params=params
+            )
             if resp.status_code != 200:
-                raise HTTPException(status_code=resp.status_code, detail="Erro ao buscar cotação")
+                raise HTTPException(
+                    status_code=resp.status_code, detail="Erro ao buscar cotação"
+                )
             return resp.json()
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Timeout ao buscar cotação")
@@ -1896,9 +3119,13 @@ async def get_historico(ticker: str, range: str = "1mo"):
         if BRAPI_TOKEN:
             params["token"] = BRAPI_TOKEN
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(f"{BRAPI_BASE}/quote/{ticker.upper()}", params=params)
+            resp = await client.get(
+                f"{BRAPI_BASE}/quote/{ticker.upper()}", params=params
+            )
             if resp.status_code != 200:
-                raise HTTPException(status_code=resp.status_code, detail="Erro ao buscar histórico")
+                raise HTTPException(
+                    status_code=resp.status_code, detail="Erro ao buscar histórico"
+                )
             return resp.json()
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Timeout ao buscar histórico")
@@ -1907,7 +3134,9 @@ async def get_historico(ticker: str, range: str = "1mo"):
 
 
 @app.get("/api/cotacoes/batch")
-async def get_cotacoes_batch(tickers: str = Query(..., description="Tickers separados por vírgula")):
+async def get_cotacoes_batch(
+    tickers: str = Query(..., description="Tickers separados por vírgula"),
+):
     """Busca cotações de múltiplos tickers de uma vez"""
     try:
         ticker_list = tickers.upper().strip()
@@ -1917,7 +3146,9 @@ async def get_cotacoes_batch(tickers: str = Query(..., description="Tickers sepa
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.get(f"{BRAPI_BASE}/quote/{ticker_list}", params=params)
             if resp.status_code != 200:
-                raise HTTPException(status_code=resp.status_code, detail="Erro ao buscar cotações")
+                raise HTTPException(
+                    status_code=resp.status_code, detail="Erro ao buscar cotações"
+                )
             return resp.json()
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Timeout ao buscar cotações")
@@ -1926,12 +3157,18 @@ async def get_cotacoes_batch(tickers: str = Query(..., description="Tickers sepa
 
 
 @app.get("/api/investimentos/resumo")
-def resumo_investimentos(user: User = Depends(require_user), db: Session = Depends(get_db)):
+def resumo_investimentos(
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
+):
     """Retorna resumo da carteira de investimentos"""
-    user_ids = get_account_user_ids(user, db)
-    investimentos = db.query(Investimento).filter(
-        (Investimento.user_id.in_(user_ids)) | (Investimento.user_id == None)
-    ).all()
+    user_ids = get_account_user_ids(user, db, shared_mode=shared)
+    investimentos = (
+        db.query(Investimento)
+        .filter((Investimento.user_id.in_(user_ids)) | (Investimento.user_id == None))
+        .all()
+    )
 
     total_investido = sum(i.quantidade * i.preco_medio for i in investimentos)
     por_tipo = {}
@@ -1951,4 +3188,5 @@ def resumo_investimentos(user: User = Depends(require_user), db: Session = Depen
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

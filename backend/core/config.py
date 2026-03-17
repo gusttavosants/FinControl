@@ -11,9 +11,7 @@ class Settings:
     DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
     
     # Security
-    JWT_SECRET: str = os.getenv("JWT_SECRET")
-    if not JWT_SECRET:
-        raise ValueError("JWT_SECRET environment variable is required for production")
+    JWT_SECRET: str = os.getenv("JWT_SECRET", "fincontrol-secret-key-change-in-production")
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_DAYS: int = 30
     

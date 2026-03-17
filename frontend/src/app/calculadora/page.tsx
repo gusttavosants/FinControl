@@ -1,90 +1,68 @@
 "use client";
 
 import Calculator from "@/components/Calculator";
+import { BookOpen, CheckCircle, Info, Lightbulb, Zap } from "lucide-react";
 
 export default function CalculadoraPage() {
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="page-title">Calculadora de Gastos</h1>
-          <p className="page-subtitle">
-            Use a calculadora para fazer cálculos rápidos de despesas
-          </p>
+          <h1 className="page-title text-gradient">Ferramentas de Apoio</h1>
+          <p className="page-subtitle">Calculadora financeira para estimativas rápidas</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Calculator Column */}
+        <div className="lg:col-span-5 xl:col-span-4">
           <Calculator />
         </div>
 
-        <div className="lg:col-span-2">
-          <div className="glass-card p-6 h-full">
-            <h2 className="section-title mb-4">Dicas de Uso</h2>
-            <ul
-              className="space-y-3"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              <li className="flex items-start gap-3">
-                <span className="text-accent-500 font-bold">✓</span>
-                <span>
-                  <strong>Operações básicas:</strong> Use +, -, *, / para somar,
-                  subtrair, multiplicar e dividir
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="text-accent-500 font-bold">✓</span>
-                <span>
-                  <strong>Decimais:</strong> Clique no ponto (.) para adicionar
-                  casas decimais
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="text-accent-500 font-bold">✓</span>
-                <span>
-                  <strong>Limpar:</strong> Clique em C para limpar o visor e
-                  começar novamente
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="text-accent-500 font-bold">✓</span>
-                <span>
-                  <strong>Desfazer:</strong> Use ← para remover o último dígito
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="text-accent-500 font-bold">✓</span>
-                <span>
-                  <strong>Resultado:</strong> Clique em = para ver o resultado
-                  da operação
-                </span>
-              </li>
-            </ul>
+        {/* Info Column */}
+        <div className="lg:col-span-7 xl:col-span-8 space-y-6">
+          <div className="glass-card p-8 h-full relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-5 -rotate-12"><BookOpen size={120} /></div>
+            
+            <div className="relative z-10">
+              <h2 className="text-xl font-black mb-8 flex items-center gap-3" style={{ color: "var(--text-primary)" }}>
+                <Info size={24} className="text-brand" /> Manual de Operações
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 {[
+                   { title: "Saldos Rápidos", desc: "Use para somar faturas de cartão antes de lançar como despesa única.", icon: Zap },
+                   { title: "Divisão de Contas", desc: "Perfeito para calcular a parte de cada um em jantares ou viagens em grupo.", icon: Lightbulb },
+                   { title: "Planejamento", desc: "Estime quanto sobrará do salário após subtrair os gastos fixos projetados.", icon: CheckCircle },
+                   { title: "Rendimento", desc: "Calcule porcentagens rápidas sobre seus aportes de investimentos.", icon: Zap },
+                 ].map((item, i) => (
+                   <div key={i} className="flex gap-4 p-4 rounded-3xl bg-slate-50 dark:bg-slate-900/50 border border-transparent hover:border-brand/20 transition-all group">
+                      <div className="w-10 h-10 rounded-2xl bg-white dark:bg-slate-800 flex items-center justify-center text-brand shadow-sm ring-1 ring-black/5"><item.icon size={18} /></div>
+                      <div>
+                        <h4 className="text-sm font-black mb-1" style={{ color: "var(--text-primary)" }}>{item.title}</h4>
+                        <p className="text-xs leading-relaxed opacity-60" style={{ color: "var(--text-secondary)" }}>{item.desc}</p>
+                      </div>
+                   </div>
+                 ))}
+              </div>
 
-            <div
-              className="mt-6 p-4 rounded-xl"
-              style={{
-                background: "rgba(51,102,255,0.08)",
-                border: "1px solid rgba(51,102,255,0.25)",
-              }}
-            >
-              <h3
-                className="text-lg font-bold mb-2"
-                style={{ color: "var(--brand)" }}
-              >
-                💡 Exemplo
-              </h3>
-              <p style={{ color: "var(--text-secondary)" }}>
-                Para calcular o total de 3 despesas de R$ 50, R$ 30 e R$ 20:
-              </p>
-              <p
-                className="mt-2 font-mono text-sm"
-                style={{ color: "var(--text-muted)" }}
-              >
-                50 + 30 + 20 = 100
-              </p>
+              <div className="mt-12 p-6 rounded-3xl bg-gradient-to-br from-brand/10 to-purple-500/10 border-2 border-brand/5">
+                 <h3 className="text-sm font-black mb-4 uppercase tracking-widest text-brand">Dica Pro</h3>
+                 <p className="text-xs font-bold leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                   Você pode usar o resultado final da calculadora e copiar diretamente para os campos de "Valor" nas páginas de Receitas e Despesas para economizar tempo.
+                 </p>
+                 <div className="mt-4 flex gap-4">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black opacity-30 uppercase">Atalho Teclado</span>
+                      <span className="text-xs font-black">ENTER = "="</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black opacity-30 uppercase">Limpar</span>
+                      <span className="text-xs font-black">ESC = "C"</span>
+                    </div>
+                 </div>
+              </div>
             </div>
           </div>
         </div>
