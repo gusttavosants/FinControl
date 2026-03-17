@@ -241,7 +241,11 @@ export default function SpreadsheetGrid({ sheet, onChange: onSheetChange, sheetN
         const fmt = c.type==="currency"?"R$#,##0.00":c.type==="percent"?"0.0%":"#,##0.##";
         for(let r=1;r<=sheet.rows.length;r++){
           const cell=ws[XLSX.utils.encode_cell({r,c:i})];
-          if(cell){cell.t="n";if(c.type!=="text")Object.assign(cell,{z:fmt});}
+          if(cell){
+            cell.t="n";
+            const colType = c.type as string;
+            if(colType !== "text") Object.assign(cell,{z:fmt});
+          }
         }
       }
     });
