@@ -9,6 +9,10 @@ async function fetchAPI(endpoint: string, options?: RequestInit) {
     "Content-Type": "application/json",
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
+  
+  // Get shared mode from localStorage (default to true)
+  const sharedMode = typeof window !== "undefined" ? localStorage.getItem("sharedMode") !== "false" : true;
+  headers["X-Shared-Mode"] = String(sharedMode);
 
   const res = await fetch(`${API_BASE}${endpoint}`, {
     headers,

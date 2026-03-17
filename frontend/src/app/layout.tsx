@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   title: "FinControl - Controle Financeiro Pessoal",
   description: "Plataforma web de controle financeiro pessoal",
   icons: {
-    icon: "/favicon.svg",
+    icon: "/favicon.png",
   },
 };
 
