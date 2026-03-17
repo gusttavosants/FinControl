@@ -177,7 +177,7 @@ export default function GlobalSearch() {
                               <span className="text-[9px] font-black uppercase">{r.data ? formatDate(r.data) : 'Sem data'}</span>
                            </div>
                         </div>
-                        <h4 className="text-sm font-black truncate group-hover:text-brand transition-colors" style={{ color: "var(--text-primary)" }}>{r.descripcion || r.descricao}</h4>
+                        <h4 className="text-sm font-black truncate group-hover:text-brand transition-colors" style={{ color: "var(--text-primary)" }}>{r.descricao}</h4>
                      </div>
 
                      <div className="text-right">
