@@ -19,3 +19,4 @@ redis
 slowapi
 stripe
 mercadopago
+passlib
