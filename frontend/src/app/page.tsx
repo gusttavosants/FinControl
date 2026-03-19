@@ -4,19 +4,21 @@ import { useEffect, useState } from "react";
 import {
   TrendingUp, TrendingDown, Wallet, AlertTriangle, Clock,
   CheckCircle2, Database, Download, ArrowUpRight, ArrowDownRight,
-  Briefcase, PieChart as PieIcon, Activity, Calendar, ExternalLink
+  Briefcase, PieChart as PieIcon, Activity, Calendar, ExternalLink, X, ChevronRight, Sparkles
 } from "lucide-react";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from "recharts";
 import {
-  dashboardAPI, seedAPI, exportAPI, investimentosAPI, cotacoesAPI
+  dashboardAPI, seedAPI, exportAPI, investimentosAPI, cotacoesAPI, authAPI
 } from "@/lib/api";
 import {
   formatCurrency, formatDate, getCurrentMonth, getCurrentYear, COLORS
 } from "@/lib/utils";
 import MonthSelector from "@/components/MonthSelector";
+import LandingPage from "@/components/LandingPage";
+import Link from "next/link";
 
 // Interfaces
 interface Summary {
@@ -40,6 +42,39 @@ export default function DashboardPage() {
     total_investido: number; total_ativos: number; tickers: string[];
     valor_atual?: number; lucro?: number; lucro_pct?: number;
   } | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [welcomeMsg, setWelcomeMsg] = useState<string | null>(null);
+  const [tourStep, setTourStep] = useState<number | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    setIsAuthenticated(!!token);
+
+    if (token) {
+      const msg = sessionStorage.getItem("welcomeMessage");
+      const tour = sessionStorage.getItem("showTour");
+      
+      if (msg) {
+        setWelcomeMsg(msg);
+        sessionStorage.removeItem("welcomeMessage");
+        setTimeout(() => setWelcomeMsg(null), 8000);
+      }
+      
+      if (tour === "true") {
+        setTourStep(1);
+        sessionStorage.removeItem("showTour");
+      }
+    }
+  }, []);
+
+  const finishTour = async () => {
+    setTourStep(null);
+    try {
+       await authAPI.markTourSeen();
+    } catch (e) {
+       console.error("Error marking tour as seen:", e);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -54,7 +89,12 @@ export default function DashboardPage() {
       setCategorias(cats);
       setEvolucao(evo);
       setVencimentos(venc);
-    } catch (e) { console.error(e); }
+    } catch (e: any) { 
+      if (e.message === "Sessão expirada") {
+        setIsAuthenticated(false);
+      }
+      console.error("Dashboard Load Error:", e); 
+    }
 
     try {
       const resumo = await investimentosAPI.resumo();
@@ -79,21 +119,106 @@ export default function DashboardPage() {
     setLoading(false);
   };
 
-  useEffect(() => { loadData(); }, [mes, ano]);
+  useEffect(() => { 
+    // Only load data if we strictly know we are authenticated
+    const token = localStorage.getItem("token");
+    if (isAuthenticated === true && token) {
+      loadData(); 
+    }
+  }, [mes, ano, isAuthenticated]);
 
-  if (loading) {
+  if (isAuthenticated === null || loading && isAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-4">
         <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "var(--border-default)", borderTopColor: "var(--brand)" }} />
-        <p className="text-sm font-medium animate-pulse" style={{ color: "var(--text-muted)" }}>Carregando seus dados...</p>
+        <p className="text-sm font-medium animate-pulse" style={{ color: "var(--text-muted)" }}>Sincronizando...</p>
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return <LandingPage />;
   }
 
   const isEmpty = summary && summary.total_receitas === 0 && summary.total_despesas === 0;
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in pb-20">
+      {/* Welcome Message Banner */}
+      {welcomeMsg && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] w-full max-w-md animate-bounce-in">
+          <div className="mx-4 p-4 rounded-2xl bg-brand text-white shadow-2xl shadow-brand/40 flex items-center justify-between border border-white/20 backdrop-blur-xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                <Sparkles size={20} />
+              </div>
+              <p className="text-sm font-black">{welcomeMsg}</p>
+            </div>
+            <button onClick={() => setWelcomeMsg(null)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Tour Modal */}
+      {tourStep !== null && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="glass-card max-w-lg w-full p-8 shadow-2xl border-brand/20 relative animate-scale-in">
+            <div className="absolute top-1 right-1 p-2 text-[150px] font-black opacity-[0.03] select-none pointer-events-none">
+              {tourStep}
+            </div>
+            
+            <div className="flex items-center gap-3 mb-6 relative z-10">
+              <div className="w-12 h-12 rounded-2xl bg-brand/10 flex items-center justify-center text-brand">
+                <Sparkles size={24} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black" style={{ color: "var(--text-primary)" }}>Seja bem-vindo ao Futuro!</h2>
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Passo {tourStep} de 3</p>
+              </div>
+            </div>
+
+            <div className="space-y-4 mb-10 min-h-[120px] relative z-10">
+              {tourStep === 1 && (
+                <div className="animate-slide-up">
+                  <h3 className="text-lg font-bold mb-2">Sua Central de Comando</h3>
+                  <p className="text-sm opacity-60 leading-relaxed font-medium">Aqui no Dashboard, você tem uma visão 360º de tudo o que acontece nas suas finanças. Saldo líquido, fluxo de caixa e alertas críticos estão sempre à mão.</p>
+                </div>
+              )}
+              {tourStep === 2 && (
+                <div className="animate-slide-up">
+                  <h3 className="text-lg font-bold mb-2">Controle Total de Fluxo</h3>
+                  <p className="text-sm opacity-60 leading-relaxed font-medium">No menu lateral, você encontra os botões para lançar Receitas e Despesas. Mantenha seu fluxo atualizado para que nossa IA possa te dar os melhores conselhos financeiros.</p>
+                </div>
+              )}
+              {tourStep === 3 && (
+                <div className="animate-slide-up">
+                  <h3 className="text-lg font-bold mb-2">Crescimento de Patrimônio</h3>
+                  <p className="text-sm opacity-60 leading-relaxed font-medium">Cadastre seus ativos em Investimentos. Nós buscamos as cotações em tempo real para você saber exatamente quanto seu dinheiro está rendendo agora.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-4 relative z-10">
+               <button onClick={finishTour} className="text-xs font-black uppercase tracking-widest opacity-40 hover:opacity-100 transition-opacity">Pular Tour</button>
+               <div className="flex gap-3">
+                  {tourStep < 3 ? (
+                    <button onClick={() => setTourStep(tourStep + 1)} className="btn-primary px-8 !py-3 !rounded-xl shadow-xl shadow-brand/20 flex items-center gap-2">
+                       Próximo <ChevronRight size={16} />
+                    </button>
+                  ) : (
+                    <button onClick={finishTour} className="btn-primary px-10 !py-3 !rounded-xl shadow-xl shadow-brand/20 flex items-center gap-2">
+                       Começar Agora <CheckCircle2 size={16} />
+                    </button>
+                  )}
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-6 animate-fade-in">
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -398,8 +523,7 @@ export default function DashboardPage() {
           </table>
         </div>
       </div>
+      </div>
     </div>
   );
 }
-
-import Link from "next/link";
