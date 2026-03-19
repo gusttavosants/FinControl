@@ -28,7 +28,17 @@ const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
 const ymd = (s: string) => { if(!s) return ""; if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s; try { return new Date(s).toISOString().split("T")[0]; } catch { return s; } };
 const brl = (v: number) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(v||0);
 const dmy = (s: string) => { if(!s) return "—"; try { return new Date(s+"T12:00:00").toLocaleDateString("pt-BR"); } catch { return s; } };
-const addM = (s: string) => { try { const d=new Date(s); d.setMonth(d.getMonth()+1); return d.toISOString().slice(0,10); } catch { return s; } };
+const addM = (s: string) => {
+  try {
+    const [y, m, d] = s.split("-").map(Number);
+    const nextM = m === 12 ? 1 : m + 1;
+    const nextY = m === 12 ? y + 1 : y;
+    // Clamp day to the last valid day of the target month
+    const lastDay = new Date(nextY, nextM, 0).getDate();
+    const clampedD = Math.min(d, lastDay);
+    return `${nextY}-${String(nextM).padStart(2, "0")}-${String(clampedD).padStart(2, "0")}`;
+  } catch { return s; }
+};
 
 /* ─── Main Page ───────────────────────────────────────────────────── */
 export default function PlanilhasPage() {
@@ -91,7 +101,53 @@ export default function PlanilhasPage() {
 
   /* ── copy month ── */
   const openCopy=()=>{const m=mes===12?1:mes+1,y=mes===12?ano+1:ano;setCopyTarget({m,y,label:`${MONTHS[m-1]} ${y}`});setMCopy(true);};
-  const doCopy=async()=>{if(!copyTarget)return;setMCopy(false);setSaving(true);try{await Promise.all(rows.filter(r=>r.descricao).map(r=>{if(r.tipo==="receita")return receitasAPI.criar({descricao:r.descricao,categoria:r.categoria,valor:r.valor,data:addM(r.data)});const p:any={descricao:r.descricao,categoria:r.categoria,valor:r.valor,pago:false};if(r.data)p.data_vencimento=addM(r.data);if(copyParcels&&typeof r.parcela_atual==="number"&&(r.parcela_total||1)>1){p.parcela_atual=r.parcela_atual+1;p.parcela_total=r.parcela_total;}return despesasAPI.criar(p);}));setMes(copyTarget.m);setAno(copyTarget.y);}catch{alert("Falha ao copiar");}finally{setSaving(false);setCopyTarget(null);}};
+  const doCopy = async () => {
+    if (!copyTarget) return;
+    setMCopy(false);
+    setSaving(true);
+    try {
+      const tasks = rows
+        .filter(r => r.descricao)
+        .map(r => {
+          if (r.tipo === "receita") {
+            return receitasAPI.criar({
+              descricao: r.descricao,
+              categoria: r.categoria,
+              valor: r.valor,
+              data: addM(r.data),
+            });
+          }
+          const p: any = {
+            descricao: r.descricao,
+            categoria: r.categoria,
+            valor: r.valor,
+            pago: false,
+            data_vencimento: r.data ? addM(r.data) : addM(new Date().toISOString().split("T")[0]),
+          };
+          if (copyParcels && typeof r.parcela_atual === "number" && (r.parcela_total || 1) > 1) {
+            p.parcela_atual = r.parcela_atual + 1;
+            p.parcela_total = r.parcela_total;
+          } else {
+            p.parcela_atual = 1;
+            p.parcela_total = 1;
+          }
+          return despesasAPI.criar(p);
+        });
+
+      const results = await Promise.allSettled(tasks);
+      const failed = results.filter(r => r.status === "rejected").length;
+      if (failed > 0) {
+        alert(`Copiado com ${failed} erro(s). Verifique os lançamentos no mês de destino.`);
+      }
+      setMes(copyTarget.m);
+      setAno(copyTarget.y);
+    } catch (e: any) {
+      alert(`Falha ao copiar: ${e?.message || "Erro desconhecido"}`);
+    } finally {
+      setSaving(false);
+      setCopyTarget(null);
+    }
+  };
 
   /* ── export principal to Excel ── */
   const exportPrincipalExcel=()=>{
