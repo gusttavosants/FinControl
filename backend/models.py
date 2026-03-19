@@ -24,8 +24,10 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     senha_hash = Column(String(255), nullable=False)
     plan = Column(String(20), nullable=False, default="free")  # free, pro, premium
-    role = Column(String(20), nullable=False, default="user")  # user, moderator, admin
+    role = Column(String(20), nullable=False, default="trial")  # trial, user, moderator, admin
     is_active = Column(Boolean, nullable=False, default=True)
+    last_login = Column(DateTime, nullable=True)
+    has_seen_tour = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, server_default=func.now())
 
 
@@ -153,3 +155,18 @@ class AuditLog(Base):
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(String(255), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
+
+
+class Note(Base):
+    __tablename__ = "notes"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    title = Column(String(255), nullable=True)
+    content = Column(Text, nullable=True)
+    color = Column(String(20), nullable=True, default="yellow") # yellow, blue, green, etc
+    is_financial = Column(Boolean, default=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    user = relationship("User")

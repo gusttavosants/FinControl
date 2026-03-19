@@ -70,6 +70,10 @@ def require_admin(func: Callable) -> Callable:
 
 # Role definitions
 ROLES = {
+    "trial": {
+        "description": "Usuário de demonstração com acesso apenas para visualização",
+        "permissions": ["read:own"],
+    },
     "user": {
         "description": "Usuário comum com acesso ao próprio dashboard",
         "permissions": ["read:own", "write:own", "delete:own"],
@@ -88,3 +92,26 @@ ROLES = {
 def get_role_permissions(role: str) -> list:
     """Get permissions for a role"""
     return ROLES.get(role, {}).get("permissions", [])
+
+
+def log_audit(
+    db: Session,
+    user_id: int,
+    user_email: str,
+    action: str,
+    entity_type: str = None,
+    entity_id: int = None,
+    details: str = None,
+):
+    """Helper function to create audit log entries"""
+    from models import AuditLog
+    audit = AuditLog(
+        user_id=user_id,
+        user_email=user_email,
+        action=action,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        details=details,
+    )
+    db.add(audit)
+    db.commit()

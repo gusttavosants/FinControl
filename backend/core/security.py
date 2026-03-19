@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -43,10 +43,21 @@ def get_current_user(
     return db.query(User).filter(User.id == user_id).first()
 
 
-def require_user(user: Optional[User] = Depends(get_current_user)) -> User:
-    """Require authenticated user or raise 401"""
+async def require_user(
+    request: Request,
+    user: Optional[User] = Depends(get_current_user)
+) -> User:
+    """Require authenticated user and handle trial/demo mode (read-only)"""
     if not user:
         raise HTTPException(status_code=401, detail="Não autorizado. Faça login.")
+    
+    # Trial Mode: Only permit GET/HEAD/OPTIONS requests (Read-Only)
+    if user.role == "trial" and request.method not in ["GET", "HEAD", "OPTIONS"]:
+        raise HTTPException(
+            status_code=403, 
+            detail="Modo de demonstração: Você não tem permissão para realizar alterações."
+        )
+        
     return user
 
 

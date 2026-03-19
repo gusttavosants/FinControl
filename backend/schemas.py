@@ -8,6 +8,7 @@ class UserRegister(BaseModel):
     nome: str
     email: str
     senha: str
+    plan: str  # Mandatory plan choice ("free", "pro", "premium")
 
 
 class UserLogin(BaseModel):
@@ -22,6 +23,7 @@ class UserResponse(BaseModel):
     role: str
     plan: str
     is_active: bool
+    has_seen_tour: bool
 
     class Config:
         from_attributes = True
@@ -31,6 +33,8 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+    message: Optional[str] = None
+    show_tour: bool = False
 
 
 # --- Admin Schemas ---
@@ -41,6 +45,7 @@ class UserAdminResponse(BaseModel):
     role: str
     plan: str
     is_active: bool
+    has_seen_tour: bool
     created_at: datetime
 
     class Config:
@@ -53,6 +58,10 @@ class UserRoleUpdate(BaseModel):
 
 class UserStatusUpdate(BaseModel):
     is_active: bool
+
+
+class UserPlanUpdate(BaseModel):
+    plan: str  # free, pro, premium
 
 
 # --- Receita Schemas ---
@@ -309,6 +318,35 @@ class AuditLogResponse(BaseModel):
     details: Optional[str] = None
     ip_address: Optional[str] = None
     created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# --- Note Schemas ---
+class NoteBase(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    color: Optional[str] = "yellow"
+    is_financial: Optional[bool] = False
+
+
+class NoteCreate(NoteBase):
+    pass
+
+
+class NoteUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    color: Optional[str] = None
+    is_financial: Optional[bool] = None
+
+
+class NoteResponse(NoteBase):
+    id: int
+    user_id: int
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True
