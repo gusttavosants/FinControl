@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, TrendingUp, ArrowUpRight, Hash } from "lucide-react";
 import { receitasAPI, categoriasAPI } from "@/lib/api";
-import { formatCurrency, formatDate, getCurrentMonth, getCurrentYear } from "@/lib/utils";
+import { formatCurrency, formatDate, getCurrentMonth, getCurrentYear, maskCurrency, parseCurrencyToNumber } from "@/lib/utils";
 import MonthSelector from "@/components/MonthSelector";
 import Modal from "@/components/Modal";
 
@@ -32,15 +32,18 @@ export default function ReceitasPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [categoriaFiltro, setCategoriaFiltro] = useState("todas");
+  const [syncing, setSyncing] = useState<number | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [idToDelete, setIdToDelete] = useState<number | null>(null);
   const [form, setForm] = useState({ descricao: "", categoria: "", valor: "", data: "", observacoes: "" });
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [data, cats] = await Promise.all([receitasAPI.listar(mes, ano), categoriasAPI.receita()]);
       setReceitas(data); setCategorias(cats);
     } catch {}
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
   useEffect(() => { loadData(); }, [mes, ano]);
 
@@ -59,11 +62,47 @@ export default function ReceitasPage() {
   const openEdit = (r: Receita) => { setEditingId(r.id); setForm({ descricao: r.descricao, categoria: r.categoria, valor: String(r.valor), data: r.data, observacoes: r.observacoes || "" }); setModalOpen(true); };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const p = { descricao: form.descricao, categoria: form.categoria, valor: parseFloat(form.valor), data: form.data, observacoes: form.observacoes || null };
-    if (editingId) await receitasAPI.atualizar(editingId, p); else await receitasAPI.criar(p);
-    setModalOpen(false); loadData();
+    const valorNum = parseFloat(form.valor);
+    const p = { descricao: form.descricao, categoria: form.categoria, valor: valorNum, data: form.data, observacoes: form.observacoes || null };
+    
+    try {
+      if (editingId) {
+        setSyncing(editingId);
+        await receitasAPI.atualizar(editingId, p);
+        setReceitas(prev => prev.map(r => r.id === editingId ? { ...r, ...p, id: editingId } : r));
+      } else {
+        const res = await receitasAPI.criar(p);
+        const newId = res.id;
+        if (newId) setReceitas(prev => [...prev, { ...p, id: newId }]);
+        else loadData();
+      }
+    } catch {
+      loadData();
+    } finally {
+      setSyncing(null);
+      setModalOpen(false);
+    }
   };
-  const handleDelete = async (id: number) => { if (confirm("Excluir esta receita?")) { await receitasAPI.deletar(id); loadData(); } };
+
+  const openDeleteModal = (id: number) => {
+    setIdToDelete(id);
+    setShowDeleteModal(true);
+  };
+
+  const handleDelete = async () => {
+    if (!idToDelete) return;
+    const original = [...receitas];
+    setReceitas(prev => prev.filter(r => r.id !== idToDelete));
+    try {
+      await receitasAPI.deletar(idToDelete);
+    } catch {
+      setReceitas(original);
+      alert("Erro ao excluir");
+    } finally {
+      setShowDeleteModal(false);
+      setIdToDelete(null);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -183,8 +222,10 @@ export default function ReceitasPage() {
                       </td>
                       <td>
                         <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => openEdit(r)} className="btn-ghost px-2 py-1.5" title="Editar"><Pencil size={13} /></button>
-                          <button onClick={() => handleDelete(r.id)} className="btn-ghost px-2 py-1.5" style={{ color: "#ef4444" }} title="Excluir"><Trash2 size={13} /></button>
+                          <button onClick={() => openEdit(r)} disabled={syncing === r.id} className="btn-ghost px-2 py-1.5" title="Editar">
+                            {syncing === r.id ? <div className="w-3 h-3 border-2 border-brand/30 border-t-brand rounded-full animate-spin" /> : <Pencil size={13} />}
+                          </button>
+                          <button onClick={() => openDeleteModal(r.id)} className="btn-ghost px-2 py-1.5" style={{ color: "#ef4444" }} title="Excluir"><Trash2 size={13} /></button>
                         </div>
                       </td>
                     </tr>
@@ -221,7 +262,14 @@ export default function ReceitasPage() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Valor (R$)</label>
-              <input type="number" step="0.01" required value={form.valor} onChange={e => setForm({ ...form, valor: e.target.value })} className="input-field" placeholder="0,00" />
+              <input
+                type="text"
+                required
+                value={maskCurrency(form.valor || 0)}
+                onChange={e => setForm({ ...form, valor: parseCurrencyToNumber(e.target.value).toString() })}
+                className="input-field"
+                placeholder="0,00"
+              />
             </div>
           </div>
           <div>
@@ -238,6 +286,36 @@ export default function ReceitasPage() {
           </div>
         </form>
       </Modal>
+
+      {/* ── Delete Confirmation Modal ── */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in-fast" onClick={() => setShowDeleteModal(false)} />
+          <div className="relative w-full max-w-sm bg-white dark:bg-[#161920] rounded-[32px] p-8 shadow-2xl animate-in fade-in zoom-in-95 border border-white/10">
+            <div className="w-16 h-16 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center mb-6 mx-auto">
+              <Trash2 size={32} />
+            </div>
+            <div className="text-center space-y-2 mb-8">
+              <h3 className="text-2xl font-black">Apagar Receita?</h3>
+              <p className="text-muted text-sm px-4">Esta ação é permanente e não poderá ser desfeita.</p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={handleDelete}
+                className="w-full py-4 bg-rose-500 text-white rounded-2xl font-black text-sm hover:bg-rose-600 transition-all active:scale-95 shadow-lg shadow-rose-500/20"
+              >
+                SIM, APAGAR RECEITA
+              </button>
+              <button 
+                onClick={() => setShowDeleteModal(false)}
+                className="w-full py-4 bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white rounded-2xl font-bold text-sm hover:bg-slate-200 dark:hover:bg-white/10 transition-all active:scale-95"
+              >
+                CANCELAR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

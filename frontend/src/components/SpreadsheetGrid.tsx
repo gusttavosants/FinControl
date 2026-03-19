@@ -6,6 +6,7 @@ import {
   CheckSquare, Percent, List, AlignLeft, AlignCenter, AlignRight,
   GripVertical, ChevronDown, MoreHorizontal, Edit2, X,
 } from "lucide-react";
+import { maskCurrency, parseCurrencyToNumber } from "@/lib/utils";
 
 /* ─── Types ─────────────────────────────────────────────────────────── */
 export type ColType = "text" | "number" | "currency" | "date" | "checkbox" | "percent" | "select";
@@ -165,9 +166,17 @@ function CellEditor({ col, value, onChange }: { col: ColDef; value: string; onCh
       {(col.options||[]).map(o=><option key={o} value={o}>{o}</option>)}
     </select>
   );
-  if (col.type==="number"||col.type==="currency"||col.type==="percent") return (
-    <input type="number" step={col.type==="currency"?".01":col.type==="percent"?".1":"1"} value={value}
+  if (col.type==="number"||col.type==="percent") return (
+    <input type="number" step={col.type==="percent"?".1":"1"} value={value}
       onChange={e=>onChange(e.target.value)} style={{...base,textAlign:"right"}}/>
+  );
+  if (col.type==="currency") return (
+    <input
+      type="text"
+      value={maskCurrency(value || "0")}
+      onChange={e => onChange(parseCurrencyToNumber(e.target.value).toString())}
+      style={{...base,textAlign:"right"}}
+    />
   );
   return <input type="text" value={value} onChange={e=>onChange(e.target.value)} style={base}/>;
 }
@@ -182,6 +191,7 @@ export default function SpreadsheetGrid({ sheet, onChange: onSheetChange, sheetN
   const [newColType, setNewColType] = useState<ColType>("text");
   const [addOptFor, setAddOptFor] = useState<string|null>(null);
   const [newOpt, setNewOpt] = useState("");
+  const [rowToDelete, setRowToDelete] = useState<string|null>(null);
   const resizeRef = useRef<{colId:string;startX:number;startW:number}|null>(null);
 
   /* ── mutations ── */
@@ -199,7 +209,11 @@ export default function SpreadsheetGrid({ sheet, onChange: onSheetChange, sheetN
 
   const addRow = () => upd({rows:[...sheet.rows,{_id:uid()}]});
 
-  const removeRow = (rowId: string) => upd({rows:sheet.rows.filter(r=>r._id!==rowId)});
+  const removeRow = () => {
+    if (!rowToDelete) return;
+    upd({rows:sheet.rows.filter(r=>r._id!==rowToDelete)});
+    setRowToDelete(null);
+  };
 
   const addColumn = () => {
     if(!newColName.trim()) return;
@@ -356,7 +370,7 @@ export default function SpreadsheetGrid({ sheet, onChange: onSheetChange, sheetN
                   borderBottom:"1px solid var(--border-subtle)",padding:"0 4px",
                   position:"relative",width:42}}>
                   <span className="row-num">{ri+1}</span>
-                  <button className="row-del" onClick={()=>removeRow(row._id)} style={{
+                  <button className="row-del" onClick={()=>setRowToDelete(row._id)} style={{
                     position:"absolute",inset:0,width:"100%",height:"100%",border:"none",background:"transparent",
                     cursor:"pointer",display:"none",alignItems:"center",justifyContent:"center",color:"#ef4444",
                   }}><Trash size={11}/></button>
@@ -475,6 +489,36 @@ export default function SpreadsheetGrid({ sheet, onChange: onSheetChange, sheetN
                 style={tbBtn("primary")}><Plus size={14}/></button>
             </div>
             <button onClick={()=>setAddOptFor(null)} style={{...tbBtn("secondary"),width:"100%",justifyContent:"center",marginTop:12}}>Fechar</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirmation Modal ── */}
+      {rowToDelete && (
+        <div style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,.6)",backdropFilter:"blur(4px)"}} onClick={() => setRowToDelete(null)} />
+          <div style={{position:"relative",width:"100%",maxWidth:384,background:"var(--bg-card)",borderRadius:32,padding:32,boxShadow:"0 25px 50px -12px rgba(0,0,0,0.5)",border:"1px solid var(--border-subtle)",zIndex:10000}}>
+            <div style={{width:64,height:64,borderRadius:16,background:"rgba(244,63,94,.1)",color:"#f43f5e",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:24,marginLeft:"auto",marginRight:"auto"}}>
+              <Trash size={32} />
+            </div>
+            <div style={{textAlign:"center",marginBottom:32}}>
+              <h3 style={{fontSize:24,fontWeight:900,color:"var(--text-primary)",margin:"0 0 8px"}}>Apagar Linha?</h3>
+              <p style={{color:"var(--text-muted)",fontSize:14,margin:0}}>Esta ação é permanente e não poderá ser desfeita.</p>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <button 
+                onClick={removeRow}
+                style={{width:"100%",padding:"16px",background:"#f43f5e",color:"white",borderRadius:16,fontWeight:900,fontSize:14,border:"none",cursor:"pointer",boxShadow:"0 10px 15px -3px rgba(244,63,94,0.2)"}}
+              >
+                SIM, APAGAR LINHA
+              </button>
+              <button 
+                onClick={() => setRowToDelete(null)}
+                style={{width:"100%",padding:"16px",background:"var(--bg-elevated)",color:"var(--text-secondary)",borderRadius:16,fontWeight:700,fontSize:14,border:"none",cursor:"pointer"}}
+              >
+                CANCELAR
+              </button>
+            </div>
           </div>
         </div>
       )}
