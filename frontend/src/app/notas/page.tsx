@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, memo } from "react";
+import { useState, useEffect, useCallback, useMemo, memo, useRef } from "react";
 import { 
   Plus, Search, Trash2, ChevronLeft, Calendar, 
   StickyNote, MoreVertical, Layout, List as ListIcon,
   Clock, Share2, Archive, Star, CheckCircle2,
   Paperclip, Image as ImageIcon, Type, Palette,
-  TrendingUp, TrendingDown
+  TrendingUp, TrendingDown, Hash
 } from "lucide-react";
 import { notesAPI } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
@@ -21,11 +21,11 @@ interface Note {
 }
 
 const COLORS = [
-  { name: "yellow", bg: "bg-amber-100", border: "border-amber-200", dot: "bg-amber-400" },
-  { name: "blue", bg: "bg-blue-100", border: "border-blue-200", dot: "bg-blue-400" },
-  { name: "green", bg: "bg-emerald-100", border: "border-emerald-200", dot: "bg-emerald-400" },
-  { name: "rose", bg: "bg-rose-100", border: "border-rose-200", dot: "bg-rose-400" },
-  { name: "purple", bg: "bg-purple-100", border: "border-purple-200", dot: "bg-purple-400" },
+  { name: "yellow", bg: "bg-amber-100", border: "border-amber-200", dot: "bg-amber-400", hex: "#f59e0b" },
+  { name: "blue",   bg: "bg-blue-100",    border: "border-blue-200",    dot: "bg-blue-400",   hex: "#3b82f6" },
+  { name: "green",  bg: "bg-emerald-100", border: "border-emerald-200", dot: "bg-emerald-400",hex: "#10b981" },
+  { name: "rose",   bg: "bg-rose-100",    border: "border-rose-200",    dot: "bg-rose-400",   hex: "#f43f5e" },
+  { name: "purple", bg: "bg-purple-100",  border: "border-purple-200",  dot: "bg-purple-400", hex: "#a855f7" },
 ];
 
 const NoteItem = memo(({ note, isSelected, onSelect, onDelete }: { 
@@ -71,6 +71,103 @@ const NoteItem = memo(({ note, isSelected, onSelect, onDelete }: {
 
 NoteItem.displayName = "NoteItem";
 
+// ── Toolbar helpers ──────────────────────────────────────────────────────────
+function insertAtCursor(
+  textarea: HTMLTextAreaElement,
+  getValue: (currentLine: string) => string,
+  onUpdate: (newValue: string) => void
+) {
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const value = textarea.value;
+
+  // Find the beginning of the current line
+  const lineStart = value.lastIndexOf("\n", start - 1) + 1;
+  const prefix = getValue(value.slice(lineStart));
+
+  const newValue = value.slice(0, lineStart) + prefix + value.slice(lineStart);
+  const newCursorPos = start + prefix.length;
+
+  onUpdate(newValue);
+  // Restore cursor position after React re-render
+  requestAnimationFrame(() => {
+    textarea.selectionStart = newCursorPos;
+    textarea.selectionEnd = newCursorPos + (end - start);
+    textarea.focus();
+  });
+}
+
+/** Insert bullet `• ` at the start of each selected line */
+function insertBulletList(
+  textarea: HTMLTextAreaElement,
+  onUpdate: (v: string) => void
+) {
+  const start = textarea.selectionStart;
+  const end   = textarea.selectionEnd;
+  const value = textarea.value;
+  const selected = value.slice(start, end);
+
+  if (selected.includes("\n")) {
+    // Multi-line: prefix every line
+    const lines = selected.split("\n").map(l => (l.startsWith("• ") ? l : `• ${l}`));
+    const replacement = lines.join("\n");
+    const newValue = value.slice(0, start) + replacement + value.slice(end);
+    onUpdate(newValue);
+    requestAnimationFrame(() => {
+      textarea.selectionStart = start;
+      textarea.selectionEnd = start + replacement.length;
+      textarea.focus();
+    });
+  } else {
+    insertAtCursor(textarea, (line) => (line.startsWith("• ") ? "" : "• "), onUpdate);
+  }
+}
+
+/** Insert numbered list `1. ` at the start of each selected line with auto-increment */
+function insertOrderedList(
+  textarea: HTMLTextAreaElement,
+  onUpdate: (v: string) => void
+) {
+  const start = textarea.selectionStart;
+  const end   = textarea.selectionEnd;
+  const value = textarea.value;
+  const selected = value.slice(start, end);
+
+  // Figure out current number based on previous lines
+  const textBefore = value.slice(0, start);
+  const linesBefore = textBefore.split("\n");
+  let nextNum = 1;
+  for (let i = linesBefore.length - 1; i >= 0; i--) {
+    const m = linesBefore[i].match(/^(\d+)\.\s/);
+    if (m) { nextNum = parseInt(m[1]) + 1; break; }
+  }
+
+  if (selected.includes("\n")) {
+    let counter = nextNum;
+    const lines = selected.split("\n").map(l => `${counter++}. ${l}`);
+    const replacement = lines.join("\n");
+    const newValue = value.slice(0, start) + replacement + value.slice(end);
+    onUpdate(newValue);
+    requestAnimationFrame(() => {
+      textarea.selectionStart = start;
+      textarea.selectionEnd = start + replacement.length;
+      textarea.focus();
+    });
+  } else {
+    insertAtCursor(textarea, () => `${nextNum}. `, onUpdate);
+  }
+}
+
+/** Insert `[ ] ` checkbox prefix */
+function insertCheckList(
+  textarea: HTMLTextAreaElement,
+  onUpdate: (v: string) => void
+) {
+  insertAtCursor(textarea, (line) => (line.startsWith("[ ] ") ? "" : "[ ] "), onUpdate);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function NotesPage() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -83,6 +180,9 @@ export default function NotesPage() {
   const [extractedData, setExtractedData] = useState<any[]>([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [idToDelete, setIdToDelete] = useState<number | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [form, setForm] = useState({ title: "", content: "", color: "yellow", is_financial: false });
 
@@ -118,31 +218,53 @@ export default function NotesPage() {
     if (window.innerWidth < 1024) setIsEditing(true);
   }, []);
 
+  // ── Create note OPTIMISTICALLY ──────────────────────────────────────────────
   const handleCreate = async () => {
+    if (creating) return;
+    setCreating(true);
+
+    // 1) Create a temporary note immediately so the UI responds instantly
+    const tempId = -Date.now(); // negative so it doesn't clash with real IDs
+    const tempNote: Note = {
+      id: tempId,
+      title: "Nova Nota",
+      content: "",
+      color: "yellow",
+      is_financial: false,
+      updated_at: new Date().toISOString(),
+    };
+    setNotes(prev => [tempNote, ...prev]);
+    setSelectedId(tempId);
+    setForm({ title: "Nova Nota", content: "", color: "yellow", is_financial: false });
+    if (isMobileView) setIsEditing(true);
+
+    // 2) Persist in background and replace the temp note with the real one
     try {
       const newNote = await notesAPI.criar({ title: "Nova Nota", content: "", color: "yellow", is_financial: false });
-      setNotes([newNote, ...notes]);
+      setNotes(prev => prev.map(n => n.id === tempId ? newNote : n));
       setSelectedId(newNote.id);
-      setForm({ title: "Nova Nota", content: "", color: "yellow", is_financial: false });
-      if (isMobileView) setIsEditing(true);
     } catch (e) {
       console.error("Error creating note:", e);
+      // Roll back optimistic update on error
+      setNotes(prev => prev.filter(n => n.id !== tempId));
+      setSelectedId(null);
+    } finally {
+      setCreating(false);
     }
   };
 
-  const handleUpdate = async () => {
-    if (!selectedId) return;
+  const handleUpdate = useCallback(async () => {
+    if (!selectedId || selectedId < 0) return; // don't try to update a temp note
     setSyncing(true);
     try {
       const updated = await notesAPI.atualizar(selectedId, form);
-      // We don't want to refresh the entire notes list every time to avoid lag
       setNotes(prev => prev.map(n => n.id === selectedId ? { ...n, ...updated } : n));
     } catch (e) {
       console.error("Error updating note:", e);
     } finally {
       setSyncing(false);
     }
-  };
+  }, [selectedId, form]);
 
   const openDeleteModal = useCallback((id: number) => {
     setIdToDelete(id);
@@ -152,7 +274,7 @@ export default function NotesPage() {
   const handleDelete = async () => {
     if (!idToDelete) return;
     try {
-      await notesAPI.deletar(idToDelete);
+      if (idToDelete > 0) await notesAPI.deletar(idToDelete);
       setNotes(prev => prev.filter(n => n.id !== idToDelete));
       setSelectedId(curr => curr === idToDelete ? null : curr);
       setIsEditing(curr => curr && selectedId === idToDelete ? false : curr);
@@ -181,7 +303,7 @@ export default function NotesPage() {
 
   // Debounced auto-save effect
   useEffect(() => {
-    if (!selectedId) return;
+    if (!selectedId || selectedId < 0) return;
     const timer = setTimeout(() => {
       const original = notes.find(n => n.id === selectedId);
       if (original && (
@@ -194,7 +316,7 @@ export default function NotesPage() {
       }
     }, 1000);
     return () => clearTimeout(timer);
-  }, [form.title, form.content, form.is_financial, form.color, selectedId, notes]);
+  }, [form.title, form.content, form.is_financial, form.color, selectedId, notes, handleUpdate]);
 
   const filteredNotes = useMemo(() => {
     return notes.filter(n => 
@@ -203,7 +325,23 @@ export default function NotesPage() {
     );
   }, [notes, search]);
 
-  const currentColor = COLORS.find(c => c.name === form.color) || COLORS[0];
+  const currentColorHex = COLORS.find(c => c.name === form.color)?.hex || "#f59e0b";
+
+  // ── Toolbar action handlers ────────────────────────────────────────────────
+  const handleBulletList = () => {
+    if (!textareaRef.current) return;
+    insertBulletList(textareaRef.current, (newContent) => setForm(f => ({ ...f, content: newContent })));
+  };
+
+  const handleOrderedList = () => {
+    if (!textareaRef.current) return;
+    insertOrderedList(textareaRef.current, (newContent) => setForm(f => ({ ...f, content: newContent })));
+  };
+
+  const handleCheckList = () => {
+    if (!textareaRef.current) return;
+    insertCheckList(textareaRef.current, (newContent) => setForm(f => ({ ...f, content: newContent })));
+  };
 
   return (
     <div className="flex h-[calc(100vh-2rem)] lg:h-[calc(100vh-100px)] overflow-hidden glass-card !p-0 shadow-2xl border-white/10">
@@ -213,8 +351,15 @@ export default function NotesPage() {
         <div className="p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-black tracking-tighter" style={{ color: "var(--text-primary)" }}>Notas</h1>
-            <button onClick={handleCreate} className="w-10 h-10 rounded-full bg-brand text-white flex items-center justify-center shadow-lg shadow-brand/20 active:scale-95 transition-all">
-              <Plus size={22} strokeWidth={3} />
+            <button
+              onClick={handleCreate}
+              disabled={creating}
+              className="w-10 h-10 rounded-full bg-brand text-white flex items-center justify-center shadow-lg shadow-brand/20 active:scale-95 transition-all disabled:opacity-60"
+            >
+              {creating
+                ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : <Plus size={22} strokeWidth={3} />
+              }
             </button>
           </div>
           
@@ -370,29 +515,114 @@ export default function NotesPage() {
                 />
 
                 {/* Content Toolbar (iOS Style) */}
-                <div className="flex items-center gap-2 p-2 rounded-2xl bg-white/5 border border-white/5 w-fit">
-                   <button className="p-2.5 hover:bg-white/10 rounded-xl transition-colors"><Type size={18} /></button>
-                   <button className="p-2.5 hover:bg-white/10 rounded-xl transition-colors"><ListIcon size={18} /></button>
-                   <button className="p-2.5 hover:bg-white/10 rounded-xl transition-colors"><CheckCircle2 size={18} /></button>
-                   <div className="w-px h-6 bg-white/10 mx-1" />
-                   <button className="p-2.5 hover:bg-white/10 rounded-xl transition-colors"><ImageIcon size={18} /></button>
-                   <button className="p-2.5 hover:bg-white/10 rounded-xl transition-colors"><Paperclip size={18} /></button>
-                   <div className="w-px h-6 bg-white/10 mx-1" />
-                   <div className="flex items-center gap-1 px-1">
-                     {COLORS.map(c => (
-                       <button 
-                         key={c.name}
-                         onClick={() => setForm({ ...form, color: c.name })}
-                         className={`w-6 h-6 rounded-full border-2 ${c.dot} ${form.color === c.name ? 'border-white' : 'border-transparent active:scale-90 transition-all'}`} 
-                       />
-                     ))}
-                   </div>
+                <div className="flex items-center gap-1 p-2 rounded-2xl bg-white/5 border border-white/5 w-fit flex-wrap">
+                  {/* Bullet list */}
+                  <button
+                    title="Lista com tópicos"
+                    onClick={handleBulletList}
+                    className="p-2.5 hover:bg-white/10 rounded-xl transition-colors"
+                  >
+                    <ListIcon size={18} />
+                  </button>
+
+                  {/* Ordered / numbered list */}
+                  <button
+                    title="Lista numerada"
+                    onClick={handleOrderedList}
+                    className="p-2.5 hover:bg-white/10 rounded-xl transition-colors"
+                  >
+                    <Hash size={18} />
+                  </button>
+
+                  {/* Checkbox list */}
+                  <button
+                    title="Lista de tarefas"
+                    onClick={handleCheckList}
+                    className="p-2.5 hover:bg-white/10 rounded-xl transition-colors"
+                  >
+                    <CheckCircle2 size={18} />
+                  </button>
+
+                  <div className="w-px h-6 bg-white/10 mx-1" />
+
+                  {/* Placeholder buttons */}
+                  <button title="Imagem" className="p-2.5 hover:bg-white/10 rounded-xl transition-colors opacity-50 cursor-not-allowed">
+                    <ImageIcon size={18} />
+                  </button>
+                  <button title="Anexo" className="p-2.5 hover:bg-white/10 rounded-xl transition-colors opacity-50 cursor-not-allowed">
+                    <Paperclip size={18} />
+                  </button>
+
+                  <div className="w-px h-6 bg-white/10 mx-1" />
+
+                  {/* Color picker */}
+                  <div className="flex items-center gap-1.5 px-1">
+                    <Palette size={14} className="opacity-30" />
+                    {COLORS.map(c => (
+                      <button
+                        key={c.name}
+                        title={`Cor: ${c.name}`}
+                        onClick={() => setForm(f => ({ ...f, color: c.name }))}
+                        className={`w-6 h-6 rounded-full transition-all duration-200 ${c.dot} ${
+                          form.color === c.name
+                            ? 'ring-2 ring-offset-2 ring-offset-transparent scale-110'
+                            : 'opacity-50 hover:opacity-100 active:scale-90'
+                        }`}
+                      />
+                    ))}
+                  </div>
                 </div>
+
+                {/* Subtle color strip below toolbar to confirm current color */}
+                <div
+                  className="h-0.5 w-16 rounded-full transition-all duration-500"
+                  style={{ backgroundColor: currentColorHex, opacity: 0.6 }}
+                />
 
                 {/* Content Area */}
                 <textarea 
+                  ref={textareaRef}
                   value={form.content}
                   onChange={e => setForm({ ...form, content: e.target.value })}
+                  onKeyDown={(e) => {
+                    // Auto-continue lists on Enter
+                    if (e.key === "Enter") {
+                      const textarea = e.currentTarget;
+                      const start = textarea.selectionStart;
+                      const lines = textarea.value.slice(0, start).split("\n");
+                      const currentLine = lines[lines.length - 1];
+
+                      const bulletMatch = currentLine.match(/^(• )(.*)/);
+                      const numberedMatch = currentLine.match(/^(\d+)\. (.*)/);
+                      const checkMatch = currentLine.match(/^(\[ \] |\[x\] )(.*)/);
+
+                      let prefix = "";
+                      if (bulletMatch) {
+                        // Stop list if line was empty
+                        if (!bulletMatch[2]) { return; }
+                        prefix = "• ";
+                      } else if (numberedMatch) {
+                        if (!numberedMatch[2]) { return; }
+                        prefix = `${parseInt(numberedMatch[1]) + 1}. `;
+                      } else if (checkMatch) {
+                        if (!checkMatch[2]) { return; }
+                        prefix = "[ ] ";
+                      }
+
+                      if (prefix) {
+                        e.preventDefault();
+                        const newValue =
+                          textarea.value.slice(0, start) +
+                          "\n" + prefix +
+                          textarea.value.slice(start);
+                        setForm(f => ({ ...f, content: newValue }));
+                        requestAnimationFrame(() => {
+                          textarea.selectionStart = start + 1 + prefix.length;
+                          textarea.selectionEnd = start + 1 + prefix.length;
+                        });
+                      }
+                    }
+                  }}
                   placeholder="Comece a escrever..."
                   className={`w-full min-h-[400px] text-lg font-medium leading-relaxed bg-transparent border-none outline-none resize-none placeholder:opacity-10 focus:ring-0`}
                   style={{ color: "var(--text-secondary)" }}
