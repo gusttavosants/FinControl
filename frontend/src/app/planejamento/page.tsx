@@ -34,7 +34,8 @@ export default function PlanejamentoPage() {
   const [investResumo, setInvestResumo] = useState<{ total_investido: number; total_ativos: number; } | null>(null);
 
   const loadData = async () => {
-    setLoading(true);
+    const isInitial = orcamentos.length === 0 && metas.length === 0;
+    if (isInitial) setLoading(true);
     try {
       const [orc, met, cats] = await Promise.all([
         orcamentoAPI.resumo(mes, ano),
@@ -49,18 +50,29 @@ export default function PlanejamentoPage() {
       const resumo = await investimentosAPI.resumo();
       setInvestResumo(resumo);
     } catch { setInvestResumo(null); }
-    setLoading(false);
+    if (isInitial) setLoading(false);
   };
 
   useEffect(() => { loadData(); }, [mes, ano]);
 
   const handleCreateOrc = async (e: React.FormEvent) => {
     e.preventDefault();
-    await orcamentoAPI.criar({ categoria: formOrc.categoria, limite: parseFloat(formOrc.limite), mes, ano });
-    setModalOrc(false); setFormOrc({ categoria: "", limite: "" }); loadData();
+    const payload = { categoria: formOrc.categoria, limite: parseFloat(formOrc.limite), mes, ano };
+    setModalOrc(false);
+    try {
+      await orcamentoAPI.criar(payload);
+      // Local update (simplified gast=0 since new)
+      setOrcamentos(prev => [...prev.filter(o => o.categoria !== payload.categoria), { id: Date.now(), ...payload, gasto: 0, restante: payload.limite, percentual: 0 }]);
+      loadData(); // Sync in bg
+    } catch { loadData(); }
   };
 
-  const handleDeleteOrc = async (id: number) => { if (confirm("Remover este orçamento?")) { await orcamentoAPI.deletar(id); loadData(); } };
+  const handleDeleteOrc = async (id: number) => {
+    if (confirm("Remover este orçamento?")) {
+      setOrcamentos(prev => prev.filter(o => o.id !== id));
+      try { await orcamentoAPI.deletar(id); } catch { loadData(); }
+    }
+  };
 
   const openCreateMeta = () => { setEditingMetaId(null); setFormMeta({ descricao: "", valor_alvo: "", valor_atual: "", prazo: "" }); setModalMeta(true); };
   const openEditMeta = (m: MetaItem) => { setEditingMetaId(m.id); setFormMeta({ descricao: m.descricao, valor_alvo: String(m.valor_alvo), valor_atual: String(m.valor_atual), prazo: m.prazo || "" }); setModalMeta(true); };
@@ -68,13 +80,28 @@ export default function PlanejamentoPage() {
   const handleSubmitMeta = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = { descricao: formMeta.descricao, valor_alvo: parseFloat(formMeta.valor_alvo), valor_atual: parseFloat(formMeta.valor_atual) || 0, prazo: formMeta.prazo || null };
-    if (editingMetaId) await metasAPI.atualizar(editingMetaId, payload);
-    else await metasAPI.criar(payload);
-    setModalMeta(false); loadData();
+    setModalMeta(false);
+    try {
+      if (editingMetaId) {
+        setMetas(prev => prev.map(m => m.id === editingMetaId ? { ...m, ...payload, id: editingMetaId } : m));
+        await metasAPI.atualizar(editingMetaId, payload);
+      } else {
+        const res = await metasAPI.criar(payload);
+        if (res.id) setMetas(prev => [...prev, { ...payload, id: res.id, concluida: false }]);
+      }
+    } catch { loadData(); }
   };
 
-  const handleToggleMeta = async (m: MetaItem) => { await metasAPI.atualizar(m.id, { concluida: !m.concluida }); loadData(); };
-  const handleDeleteMeta = async (id: number) => { if (confirm("Remover esta meta?")) { await metasAPI.deletar(id); loadData(); } };
+  const handleToggleMeta = async (m: MetaItem) => {
+    setMetas(prev => prev.map(item => item.id === m.id ? { ...item, concluida: !item.concluida } : item));
+    try { await metasAPI.atualizar(m.id, { concluida: !m.concluida }); } catch { loadData(); }
+  };
+  const handleDeleteMeta = async (id: number) => {
+    if (confirm("Remover esta meta?")) {
+      setMetas(prev => prev.filter(m => m.id !== id));
+      try { await metasAPI.deletar(id); } catch { loadData(); }
+    }
+  };
 
   const getBarColorClass = (pct: number) => {
     if (pct >= 100) return "bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.3)]";

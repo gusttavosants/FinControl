@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Wallet, UserPlus, Eye, EyeOff, Loader2, CheckCircle, ShieldCheck } from "lucide-react";
+import { Wallet, UserPlus, Eye, EyeOff, Loader2, CheckCircle, ShieldCheck, Zap } from "lucide-react";
 import Link from "next/link";
-import { authAPI } from "@/lib/api";
+import { authAPI, paymentAPI } from "@/lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -16,16 +16,28 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [plan, setPlan] = useState("free"); // "free" = Basico R$ 10
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     if (senha !== confirmSenha) return setError("As senhas não coincidem");
     if (senha.length < 6) return setError("A senha deve ter pelo menos 6 caracteres");
+    if (!plan) return setError("Selecione um plano para continuar");
     setLoading(true);
     try {
-      const data = await authAPI.register(nome, email, senha);
+      const data = await authAPI.register(nome, email, senha, plan);
       localStorage.setItem("token", data.access_token);
       if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
+      
+      // Open WhatsApp for manual payment confirmation
+      const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "5512935854861";
+      const text = encodeURIComponent(
+        `Olá! Acabei de me cadastrar no FinControl.\n\nNome: ${nome}\nEmail: ${email}\nPlano Escolhido: ${plan.toUpperCase()}\n\nGostaria de confirmar meu pagamento para liberar o acesso total.`
+      );
+      window.open(`https://wa.me/${whatsappNumber}?text=${text}`, "_blank");
+      
+      // Redirect to dashboard (user will be in trial mode)
       router.push("/");
     } catch (err: any) {
       setError(err.message || "Erro ao criar conta");
@@ -35,7 +47,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 dark:bg-[#0a0c10]">
       {/* Visual side */}
-      <div className="hidden md:flex md:w-1/2 bg-[#0d1117] p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden md:flex md:w-5/12 bg-[#0d1117] p-12 flex-col justify-between relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,#3366ff10,transparent)]" />
         
         <div className="relative z-10">
@@ -52,9 +64,9 @@ export default function RegisterPage() {
             </h2>
             <div className="space-y-6">
                {[
-                 { t: "Configuração em 30 segundos", d: "Sem burocracia, crie sua conta e comece agora.", i: CheckCircle },
-                 { t: "Insights da Comunidade", d: "Compare seus gastos com a média da sua região.", i: ShieldCheck },
-                 { t: "Gratuito para sempre", d: "Funcionalidades básicas sem custo, para sempre.", i: CheckCircle },
+                 { t: "Dashboard Premium", d: "Visualize cada centavo com clareza absoluta.", i: CheckCircle },
+                 { t: "Controle Ilimitado", d: "Sem limites de transações em qualquer plano.", i: Zap },
+                 { t: "Segurança Total", d: "Seus dados criptografados e sempre protegidos.", i: ShieldCheck },
                ].map((item, idx) => (
                  <div key={idx} className="flex gap-4 p-4 rounded-3xl bg-white/5 border border-white/10">
                     <div className="w-10 h-10 rounded-2xl bg-brand/20 flex items-center justify-center text-brand"><item.i size={20} /></div>
@@ -70,33 +82,34 @@ export default function RegisterPage() {
       </div>
 
       {/* Form side */}
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-sm">
-          <div className="mb-10 text-center md:text-left">
+      <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto">
+        <div className="w-full max-w-lg py-12">
+          <div className="mb-10 text-center">
             <h2 className="text-3xl font-black mb-2" style={{ color: "var(--text-primary)" }}>Criar sua conta</h2>
-            <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>Preencha os dados abaixo para começar</p>
+            <p className="text-sm font-medium opacity-60" style={{ color: "var(--text-secondary)" }}>Preencha os dados e escolha seu plano de potência</p>
           </div>
 
           {error && (
-            <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs font-bold mb-6 animate-in slide-in-from-top-2">
+            <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs font-bold mb-6 animate-in slide-in-from-top-2 text-center">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest mb-2 opacity-50">Seu Nome Completo</label>
-              <input type="text" required value={nome} onChange={e => setNome(e.target.value)} 
-                className="input-field py-3" placeholder="Ex: João Silva" />
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest mb-2 opacity-50">Seu Nome Completo</label>
+                <input type="text" required value={nome} onChange={e => setNome(e.target.value)} 
+                  className="input-field py-3" placeholder="Ex: João Silva" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest mb-2 opacity-50">Endereço de Email</label>
+                <input type="email" required value={email} onChange={e => setEmail(e.target.value)} 
+                  className="input-field py-3" placeholder="seu@email.com" />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest mb-2 opacity-50">Endereço de Email</label>
-              <input type="email" required value={email} onChange={e => setEmail(e.target.value)} 
-                className="input-field py-3" placeholder="seu@email.com" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                <div>
                   <label className="block text-[10px] font-black uppercase tracking-widest mb-2 opacity-50">Criar Senha</label>
                   <div className="relative">
@@ -111,6 +124,26 @@ export default function RegisterPage() {
                   <label className="block text-[10px] font-black uppercase tracking-widest mb-2 opacity-50">Repetir Senha</label>
                   <input type="password" required value={confirmSenha} onChange={e => setConfirmSenha(e.target.value)} 
                     className="input-field py-3" placeholder="••••••" />
+               </div>
+            </div>
+
+            {/* Plan Selector */}
+            <div className="space-y-4">
+               <label className="block text-[10px] font-black uppercase tracking-widest mb-2 opacity-50">Selecione seu Plano</label>
+               <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { id: "free", label: "Básico", price: "R$ 9", desc: "Essencial" },
+                    { id: "pro", label: "Pro", price: "R$ 19", desc: "Completo" },
+                    { id: "premium", label: "Premium", price: "R$ 39", desc: "Ilimitado" }
+                  ].map(p => (
+                    <button key={p.id} type="button" onClick={() => setPlan(p.id)}
+                      className={`p-4 rounded-3xl border-2 transition-all text-center relative overflow-hidden group ${plan === p.id ? 'border-brand bg-brand/5 shadow-xl shadow-brand/10' : 'border-slate-100 dark:border-white/5 bg-white/50 dark:bg-white/5'}`}>
+                       <p className={`text-[9px] font-black uppercase tracking-tighter mb-1 ${plan === p.id ? 'text-brand' : 'opacity-40'}`}>{p.label}</p>
+                       <p className="text-lg font-black" style={{ color: "var(--text-primary)" }}>{p.price},99</p>
+                       <p className="text-[9px] font-bold opacity-30">/mês</p>
+                       {plan === p.id && <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-brand animate-ping" />}
+                    </button>
+                  ))}
                </div>
             </div>
 

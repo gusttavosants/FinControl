@@ -9,15 +9,40 @@ router = APIRouter()
 
 def require_admin(user: User = Depends(require_user)) -> User:
     """Require user to be admin"""
-    # TODO: Add admin flag to User model
-    # For now, check if user email is in admin list
     import os
     admin_emails = os.getenv("ADMIN_EMAILS", "").split(",")
     
-    if user.email not in admin_emails:
+    if user.role != "admin" and user.email not in admin_emails:
         raise HTTPException(status_code=403, detail="Admin access required")
     
     return user
+
+@router.post("/users/{user_id}/upgrade")
+def upgrade_user(
+    user_id: int,
+    role: str = "user",
+    plan: str = "pro",
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Upgrade user access (admin only)"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    user.role = role
+    user.plan = plan
+    db.commit()
+    db.refresh(user)
+    return {
+        "status": "success", 
+        "user": {
+            "id": user.id,
+            "email": user.email, 
+            "role": user.role, 
+            "plan": user.plan
+        }
+    }
 
 @router.get("/metrics")
 def get_business_metrics(

@@ -30,8 +30,6 @@ async def background_tasks():
     
     while True:
         try:
-            await asyncio.sleep(3600)  # Run every hour
-            
             db = SessionLocal()
             try:
                 # Generate notifications
@@ -44,6 +42,8 @@ async def background_tasks():
                 logger.info("Background task completed", task="recurring", result=recurring_result)
             finally:
                 db.close()
+            
+            await asyncio.sleep(3600)  # Next run in one hour
         except Exception as e:
             logger.error("Background task failed", error=str(e))
 

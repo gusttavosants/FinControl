@@ -37,7 +37,7 @@ class Settings:
     
     # Plans & Features
     FREE_PLAN_LIMITS = {
-        "max_transactions": 100,
+        "max_transactions": -1,  # unlimited (as requested)
         "max_goals": 3,
         "max_investments": 10,
         "export_enabled": False,
@@ -46,7 +46,7 @@ class Settings:
     }
     
     PRO_PLAN_LIMITS = {
-        "max_transactions": 1000,
+        "max_transactions": -1,  # unlimited
         "max_goals": 20,
         "max_investments": 100,
         "export_enabled": True,

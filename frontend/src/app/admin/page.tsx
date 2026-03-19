@@ -15,8 +15,9 @@ import {
   AreaChart, Area
 } from "recharts";
 import Link from "next/link";
+import { adminAPI } from "@/lib/api";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 
 interface User {
   id: number; nome: string; email: string; role: string; plan: string; is_active: boolean; created_at: string;
@@ -48,31 +49,31 @@ export default function AdminDashboard() {
 
   const fetchAllMetrics = async () => {
     try {
+      // Metrics still use fetch directly because we don't have a wrapper yet, 
+      // but users/logs will use adminAPI.
       const token = localStorage.getItem("token");
-      if (!token) throw new Error("Não autorizado");
-      const headers = { Authorization: `Bearer ${token}` };
-      const [mRes, uRes] = await Promise.all([
-        fetch(`${API_URL}/api/admin/metrics`, { headers }),
-        fetch(`${API_URL}/api/admin/users`, { headers }),
-      ]);
-      if (!mRes.ok) throw new Error("Acesso negado - apenas administradores");
-      setMetrics(await mRes.json());
-      setUsers(await uRes.json());
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const mRes = await fetch(`${API_URL}/api/admin/metrics`, { headers: { Authorization: `Bearer ${token}` } });
+      if (mRes.ok) setMetrics(await mRes.json());
+      
+      const uList = await adminAPI.listUsers();
+      setUsers(uList);
     } catch (err: any) { setError(err.message); } 
     finally { setLoading(false); }
   };
 
   const fetchAuditLogs = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/api/admin/audit-logs?limit=100`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) setAuditLogs(await res.json());
+      const logs = await adminAPI.getLogs();
+      setAuditLogs(logs);
     } catch {}
   };
 
   const fetchUserActivity = async (userId: number) => {
     try {
+      // Activity is not in adminAPI yet, using generic list users or custom fetch
       const token = localStorage.getItem("token");
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const res = await fetch(`${API_URL}/api/admin/users/${userId}/activity?limit=50`, { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) { const data = await res.json(); setUserActivity(data.activity || []); }
     } catch {}
@@ -90,14 +91,20 @@ export default function AdminDashboard() {
 
   const updateUserRole = async (userId: number, role: string) => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/api/admin/users/${userId}/role`, {
-        method: "PUT",
-        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ role }),
-      });
-      if (res.ok) { fetchAllMetrics(); if (selectedUser?.id === userId) setSelectedUser({ ...selectedUser, role }); }
+      await adminAPI.updateRole(userId, role);
+      fetchAllMetrics();
+      if (selectedUser?.id === userId) setSelectedUser({ ...selectedUser, role });
     } catch {}
+  };
+
+  const updateUserPlan = async (userId: number, plan: string) => {
+    try {
+       await adminAPI.updatePlan(userId, plan);
+       fetchAllMetrics();
+       if (selectedUser?.id === userId) setSelectedUser({ ...selectedUser, plan });
+    } catch (err: any) {
+       alert(err.message);
+    }
   };
 
   if (loading) return <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4"><Loader2 className="w-10 h-10 animate-spin text-brand" /><p className="text-xs font-black uppercase tracking-widest opacity-40">Acessando Command Center...</p></div>;
@@ -158,34 +165,20 @@ export default function AdminDashboard() {
                        <option>Último ano</option>
                     </select>
                  </div>
-                 <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                       <AreaChart data={[
-                         { name: 'Jan', value: 4000 }, { name: 'Fev', value: 3000 }, { name: 'Mar', value: 2000 },
-                         { name: 'Abr', value: 2780 }, { name: 'Mai', value: 1890 }, { name: 'Jun', value: 2390 },
-                       ]}>
-                          <defs>
-                            <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="var(--brand)" stopOpacity={0.1}/>
-                              <stop offset="95%" stopColor="var(--brand)" stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
-                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                          <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }} />
-                          <Area type="monotone" dataKey="value" stroke="var(--brand)" strokeWidth={3} fillOpacity={1} fill="url(#colorVal)" />
-                       </AreaChart>
-                    </ResponsiveContainer>
-                 </div>
+                 <div className="h-[300px] flex items-center justify-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50">
+                    <div className="text-center opacity-30">
+                       <TrendingUp className="mx-auto mb-2" size={32} />
+                       <p className="text-xs font-black uppercase tracking-widest">Gráfico de Crescimento (Real-time)</p>
+                    </div>
+                  </div>
               </div>
 
               <div className="glass-card p-8 divide-y divide-slate-100 dark:divide-slate-800">
                  <h2 className="text-lg font-black mb-6" style={{ color: "var(--text-primary)" }}>Health Check</h2>
-                 <HealthItem label="API Status" status="Operacional" icon={Zap} color="text-emerald-500" />
-                 <HealthItem label="Banco de Dados" status="Ok (2.4ms)" icon={Database} color="text-blue-500" />
-                 <HealthItem label="E-mails (Postmark)" status="100% Delivery" icon={Mail} color="text-amber-500" />
-                 <HealthItem label="Cloud Infrastructure" status="99.9% Uptime" icon={Activity} color="text-purple-500" />
+                 <HealthItem label="API Gateway" status="Estável" icon={Zap} color="text-emerald-500" />
+                 <HealthItem label="Database Cluster" status="Sincronizado" icon={Database} color="text-blue-500" />
+                 <HealthItem label="Mailing System" status="Operacional" icon={Mail} color="text-amber-500" />
+                 <HealthItem label="Cloud Network" status="Ativo" icon={Activity} color="text-purple-500" />
                  <div className="pt-6 mt-6">
                     <button onClick={() => fetchAllMetrics()} className="w-full btn-secondary py-3 flex items-center justify-center gap-2">
                        <RefreshCcw size={14} /> Atualizar Métricas

@@ -28,3 +28,35 @@ export const COLORS = [
   "#eab308", "#22c55e", "#14b8a6", "#06b6d4", "#3b82f6",
   "#a855f7", "#d946ef", "#64748b",
 ];
+
+export function maskCurrency(value: string | number): string {
+  let numValue = 0;
+  if (typeof value === "number") {
+    numValue = value;
+  } else if (typeof value === "string") {
+    // Treat the string as a float representation, which is what is stored in the form state
+    numValue = parseFloat(value);
+    if (isNaN(numValue)) numValue = 0;
+  }
+  
+  // Need to safely handle zero as well
+  if (numValue === 0) return "0,00";
+  
+  // Convert the accurate float to cents and format
+  const val = Math.round(numValue * 100).toString().padStart(3, "0");
+  const integerPart = val.slice(0, -2);
+  const decimalPart = val.slice(-2);
+  
+  // Format integer part with dots for thousands
+  const formattedInteger = parseInt(integerPart || "0", 10).toLocaleString("pt-BR");
+  
+  return `${formattedInteger},${decimalPart}`;
+}
+
+
+export function parseCurrencyToNumber(value: string): number {
+  if (!value) return 0;
+  // Remove all non-digits, then divide by 100
+  const cleanValue = value.replace(/\D/g, "");
+  return parseInt(cleanValue) / 100;
+}

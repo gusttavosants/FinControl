@@ -127,17 +127,18 @@ async def stripe_webhook(
         logger.error("Unexpected webhook error", error=str(e))
         raise HTTPException(status_code=500, detail="Webhook processing failed")
 
-@router.post("/webhooks/mercadopago")
-async def mercadopago_webhook(
-    request: Request,
-    db: Session = Depends(get_db)
-):
-    """Handle MercadoPago webhooks"""
-    data = await request.json()
-    
-    logger.info("MercadoPago webhook received", data=data)
-    
-    # TODO: Implement MercadoPago webhook handling
-    # MercadoPago sends notifications for payment updates
-    
-    return {"status": "received"}
+    @router.post("/webhooks/mercadopago")
+    async def mercadopago_webhook(
+        request: Request,
+        db: Session = Depends(get_db)
+    ):
+        """Handle MercadoPago webhooks"""
+        try:
+            data = await request.json()
+            logger.info("MercadoPago webhook received", data=data)
+            
+            result = PaymentService.handle_mercadopago_webhook(data, db)
+            return result
+        except Exception as e:
+            logger.error("MercadoPago webhook error", error=str(e))
+            return {"status": "error", "message": str(e)}

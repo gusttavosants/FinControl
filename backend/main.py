@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, Query, UploadFile, File, Form
+from fastapi import FastAPI, Depends, HTTPException, Query, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import StreamingResponse
@@ -18,6 +18,7 @@ from models import (
     SharedAccount,
     Investimento,
     AuditLog,
+    Note,
 )
 import os
 from dotenv import load_dotenv
@@ -61,10 +62,14 @@ from schemas import (
     UserRoleUpdate,
     UserStatusUpdate,
     AuditLogResponse,
+    UserPlanUpdate,
+    NoteCreate,
+    NoteUpdate,
+    NoteResponse,
 )
 import bcrypt
 from jose import JWTError, jwt
-from core.rbac import require_admin, get_role_permissions, ROLES
+from core.rbac import require_admin, get_role_permissions, ROLES, log_audit
 from fastapi import Header
 
 SECRET_KEY = os.environ.get("JWT_SECRET", "fincontrol-secret-key-change-in-production")
@@ -88,9 +93,12 @@ security = HTTPBearer(auto_error=False)
 app = FastAPI(title="Controle Financeiro Pessoal", version="1.0.0")
 
 # CORS Configuration
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://0.0.0.0:3000",
+    "http://[::1]:3000",
     "https://fin-control.vercel.app",
     "https://fin-control-fawn.vercel.app",
     "https://creative-cranachan-b54dcf.netlify.app",
@@ -100,14 +108,30 @@ ALLOWED_ORIGINS = [
 env_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
 ALLOWED_ORIGINS.extend([o.strip() for o in env_origins if o.strip()])
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-    max_age=3600,
-)
+# More permissive for local development to avoid CORS headaches
+if ENVIRONMENT == "development":
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False, # Must be False if using "*"
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=ALLOWED_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+        max_age=3600,
+    )
+
+# Include modular routes from the routes/ directory
+from routes import api_router
+app.include_router(api_router, prefix="/api")
 
 
 # ==================== ROOT ROUTE ====================
@@ -192,9 +216,9 @@ async def startup_event():
     try:
         # Inicializa tabelas do banco de dados
         Base.metadata.create_all(bind=engine)
-        print("✅ Database tables initialized")
+        print("[OK] Database tables initialized")
     except Exception as e:
-        print(f"❌ Erro ao inicializar database: {str(e)}")
+        print(f"[ERROR] Erro ao inicializar database: {str(e)}")
 
     from database import SessionLocal
 
@@ -202,13 +226,13 @@ async def startup_event():
     try:
         # Gera notificações automaticamente
         result = generate_notifications(db)
-        print(f"✅ Startup: {result['message']}")
+        print(f"[OK] Startup: {result['message']}")
 
         # Processa recorrências
         recurring_result = process_recurring_expenses(db)
-        print(f"✅ Startup: {recurring_result['message']}")
+        print(f"[OK] Startup: {recurring_result['message']}")
     except Exception as e:
-        print(f"❌ Erro no startup: {str(e)}")
+        print(f"[ERROR] Erro no startup: {str(e)}")
     finally:
         db.close()
 
@@ -236,10 +260,26 @@ def get_current_user(
     return db.query(User).filter(User.id == user_id).first()
 
 
-def require_user(user: Optional[User] = Depends(get_current_user)) -> User:
+async def require_user(request: Request, user: Optional[User] = Depends(get_current_user)) -> User:
     if not user:
         raise HTTPException(status_code=401, detail="Não autorizado. Faça login.")
+    
+    # Trial Mode: Only permit GET/HEAD/OPTIONS requests (Read-Only)
+    if user.role == "trial" and request.method not in ["GET", "HEAD", "OPTIONS"]:
+        raise HTTPException(
+            status_code=403, 
+            detail="Modo de demonstração: Você não tem permissão para realizar alterações."
+        )
+        
     return user
+
+
+@app.put("/api/users/me/tour")
+def mark_tour_seen(user: User = Depends(require_user), db: Session = Depends(get_db)):
+    """Marca que o usuário já viu o tour inicial"""
+    user.has_seen_tour = True
+    db.commit()
+    return {"message": "Tour marcado como visto"}
 
 
 def get_account_user_ids(user: User, db: Session, shared_mode: bool = True) -> List[int]:
@@ -504,55 +544,7 @@ CATEGORIAS_DESPESA = [
 ]
 
 
-# ==================== AUTH ====================
-@app.post("/api/auth/register", response_model=TokenResponse, status_code=201)
-def register(data: UserRegister, db: Session = Depends(get_db)):
-    existing = db.query(User).filter(User.email == data.email).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Email já cadastrado")
-    if len(data.senha) < 6:
-        raise HTTPException(
-            status_code=400, detail="Senha deve ter pelo menos 6 caracteres"
-        )
-    user = User(
-        nome=data.nome,
-        email=data.email,
-        senha_hash=hash_senha(data.senha),
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    token = create_access_token(user.id)
-    return TokenResponse(access_token=token, user=UserResponse.model_validate(user))
-
-
-@app.post("/api/auth/login", response_model=TokenResponse)
-def login(data: UserLogin, db: Session = Depends(get_db)):
-    try:
-        user = db.query(User).filter(User.email == data.email).first()
-        if not user or not verify_senha(data.senha, user.senha_hash):
-            raise HTTPException(status_code=401, detail="Email ou senha incorretos")
-        token = create_access_token(user.id)
-        return TokenResponse(access_token=token, user=UserResponse.model_validate(user))
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"❌ Login error: {str(e)}")
-        import traceback
-
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Erro no servidor: {str(e)}")
-
-
-@app.get("/api/auth/me", response_model=UserResponse)
-def get_me(user: User = Depends(require_user)):
-    return user
-
-
-@app.post("/api/auth/refresh", response_model=TokenResponse)
-def refresh_token(user: User = Depends(require_user), db: Session = Depends(get_db)):
-    token = create_access_token(user.id)
-    return TokenResponse(access_token=token, user=UserResponse.model_validate(user))
+# AUTH routes removed from here as they are correctly handled by routes/auth.py
 
 
 # ==================== ADMIN ENDPOINTS ====================
@@ -672,8 +664,7 @@ def update_user_status(
     db.refresh(target_user)
 
     status = "ativado" if data.is_active else "desativado"
-    print(f"✅ Admin {user.email} {status} user {target_user.email}")
-
+    
     log_audit(
         db=db,
         user_id=user.id,
@@ -681,13 +672,65 @@ def update_user_status(
         action="UPDATE_USER_STATUS",
         entity_type="user",
         entity_id=user_id,
-        details=f"Changed is_active from {not data.is_active} to {data.is_active}",
+        details=f"Status alterado para {status}"
     )
 
     return {
         "message": f"Usuário {status}",
         "user": UserAdminResponse.model_validate(target_user),
     }
+
+
+@app.put("/api/admin/users/{user_id}/plan")
+def update_user_plan(
+    user_id: int,
+    data: UserPlanUpdate,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    """Atualiza o plano de um usuário (apenas admin)"""
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Acesso apenas para administradores"
+        )
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    target_user.plan = data.plan
+    db.commit()
+    db.refresh(target_user)
+    
+    log_audit(
+        db=db,
+        user_id=user.id,
+        user_email=user.email,
+        action="UPDATE_USER_PLAN",
+        entity_type="user",
+        entity_id=user_id,
+        details=f"Plano alterado para {data.plan}"
+    )
+    
+    return {
+        "message": f"Plano do usuário atualizado para {data.plan}",
+        "user": UserAdminResponse.model_validate(target_user)
+    }
+
+
+@app.get("/api/admin/logs", response_model=List[AuditLogResponse])
+def listar_audit_logs(
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+    limit: int = Query(100, ge=1, le=1000),
+):
+    """Lista os logs de auditoria do sistema (apenas admin)"""
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Acesso apenas para administradores"
+        )
+        
+    return db.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit).all()
 
 
 @app.get("/api/admin/roles")
@@ -822,6 +865,18 @@ def criar_receita(
     db.add(db_receita)
     db.commit()
     db.refresh(db_receita)
+    
+    # Log receita creation
+    log_audit(
+        db=db,
+        user_id=user.id,
+        user_email=user.email,
+        action="CREATE_RECEITA",
+        entity_type="receita",
+        entity_id=db_receita.id,
+        details=f"Receita criada: {db_receita.descricao} (R$ {db_receita.valor})"
+    )
+    
     return db_receita
 
 
@@ -1137,6 +1192,7 @@ def generate_notifications(db: Session = Depends(get_db)):
             titulo=titulo,
             mensagem=mensagem,
             tipo="vencimento",
+            user_id=despesa.user_id,
             referencia_id=despesa.id,
             referencia_tipo="despesa",
         )
@@ -1160,6 +1216,7 @@ def generate_notifications(db: Session = Depends(get_db)):
         gasto = (
             db.query(func.coalesce(func.sum(Despesa.valor), 0))
             .filter(
+                Despesa.user_id == orc.user_id,
                 Despesa.categoria == orc.categoria,
                 extract("month", Despesa.data_vencimento) == mes_atual,
                 extract("year", Despesa.data_vencimento) == ano_atual,
@@ -1184,6 +1241,7 @@ def generate_notifications(db: Session = Depends(get_db)):
                     titulo="💰 Orçamento Excedido",
                     mensagem=f"O orçamento da categoria '{orc.categoria}' foi excedido. Gasto: R$ {gasto:.2f}, Limite: R$ {orc.limite:.2f}",
                     tipo="orcamento",
+                    user_id=orc.user_id,
                     referencia_id=orc.id,
                     referencia_tipo="orcamento",
                 )
@@ -1995,26 +2053,6 @@ def admin_revenue_chart(
     return resultado
 
 
-def log_audit(
-    db: Session,
-    user_id: int,
-    user_email: str,
-    action: str,
-    entity_type: str = None,
-    entity_id: int = None,
-    details: str = None,
-):
-    """Helper function to create audit log entries"""
-    audit = AuditLog(
-        user_id=user_id,
-        user_email=user_email,
-        action=action,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        details=details,
-    )
-    db.add(audit)
-    db.commit()
 
 
 @app.get("/api/admin/audit-logs", response_model=List[AuditLogResponse])
@@ -3183,6 +3221,122 @@ def resumo_investimentos(
         "total_ativos": len(investimentos),
         "por_tipo": por_tipo,
         "tickers": list(set(i.ticker for i in investimentos)),
+    }
+
+
+# --- Notes Routes ---
+
+@app.post("/api/notes", response_model=NoteResponse, tags=["Notes"])
+async def create_note(
+    note: NoteCreate,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    db_note = Note(
+        user_id=user.id,
+        title=note.title,
+        content=note.content,
+        color=note.color,
+        is_financial=note.is_financial
+    )
+    db.add(db_note)
+    db.commit()
+    db.refresh(db_note)
+    return db_note
+
+
+@app.get("/api/notes", response_model=List[NoteResponse], tags=["Notes"])
+async def list_notes(
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    return db.query(Note).filter(Note.user_id == user.id).order_by(Note.updated_at.desc()).all()
+
+
+@app.get("/api/notes/{note_id}", response_model=NoteResponse, tags=["Notes"])
+async def get_note(
+    note_id: int,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    note = db.query(Note).filter(Note.id == note_id, Note.user_id == user.id).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="Nota não encontrada")
+    return note
+
+
+@app.put("/api/notes/{note_id}", response_model=NoteResponse, tags=["Notes"])
+async def update_note(
+    note_id: int,
+    note_update: NoteUpdate,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    db_note = db.query(Note).filter(Note.id == note_id, Note.user_id == user.id).first()
+    if not db_note:
+        raise HTTPException(status_code=404, detail="Nota não encontrada")
+    
+    if note_update.title is not None:
+        db_note.title = note_update.title
+    if note_update.content is not None:
+        db_note.content = note_update.content
+    if note_update.color is not None:
+        db_note.color = note_update.color
+    if note_update.is_financial is not None:
+        db_note.is_financial = note_update.is_financial
+
+    db.commit()
+    db.refresh(db_note)
+    return db_note
+
+
+@app.delete("/api/notes/{note_id}", tags=["Notes"])
+async def delete_note(
+    note_id: int,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    db_note = db.query(Note).filter(Note.id == note_id, Note.user_id == user.id).first()
+    if not db_note:
+        raise HTTPException(status_code=404, detail="Nota não encontrada")
+    
+    db.delete(db_note)
+    db.commit()
+    return {"message": "Nota excluída com sucesso"}
+
+
+@app.post("/api/notes/{note_id}/process", tags=["Notes"])
+async def process_note(
+    note_id: int,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    note = db.query(Note).filter(Note.id == note_id, Note.user_id == user.id).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="Nota não encontrada")
+    
+    if not note.is_financial:
+        return {"message": "Nota não está marcada para leitura do sistema", "data": []}
+
+    # Basic extraction logic (could be replaced by LLM call)
+    text = note.content or ""
+    # Look for patterns like "DD/MM R$ X,XX Descrição" or "Descrição R$ X,XX"
+    # match 32,50 or 1.200,50
+    pattern = r"R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})"
+    amounts = re.findall(pattern, text)
+    
+    extractions = []
+    for amt in amounts:
+        val = float(amt.replace(".", "").replace(",", "."))
+        extractions.append({
+            "value": val,
+            "description": "Lançamento extraído da nota",
+            "type": "despesa" if "pago" in text.lower() or "gasto" in text.lower() else "receita"
+        })
+
+    return {
+        "message": f"Identificamos {len(extractions)} possíveis lançamentos na sua nota",
+        "data": extractions
     }
 
 

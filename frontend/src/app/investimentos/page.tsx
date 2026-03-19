@@ -106,11 +106,24 @@ export default function InvestimentosPage() {
 
   const handleSubmit = async () => {
     try {
-      const payload = { ticker: form.ticker.toUpperCase().trim(), tipo: form.tipo, quantidade: parseFloat(form.quantidade), preco_medio: parseFloat(form.preco_medio), data_compra: form.data_compra, observacoes: form.observacoes || null };
-      if (editingId) await investimentosAPI.atualizar(editingId, payload);
-      else await investimentosAPI.criar(payload);
-      setShowModal(false); setEditingId(null); setForm({ ticker: "", tipo: "acao", quantidade: "", preco_medio: "", data_compra: new Date().toISOString().split("T")[0], observacoes: "" }); loadInvestimentos();
-    } catch { /* ignore */ }
+      const payload = { ticker: form.ticker.toUpperCase().trim(), tipo: form.tipo, quantidade: parseFloat(form.quantidade), preco_medio: parseFloat(form.preco_medio), data_compra: form.data_compra, observacoes: form.observacoes || undefined };
+      
+      if (editingId) {
+        setInvestimentos(prev => prev.map(i => i.id === editingId ? { ...i, ...payload, id: editingId } : i));
+        await investimentosAPI.atualizar(editingId, { ...payload, observacoes: payload.observacoes || null });
+      } else {
+        const res = await investimentosAPI.criar({ ...payload, observacoes: payload.observacoes || null });
+        const newId = res.id;
+        if (newId) setInvestimentos(prev => [...prev, { ...payload, id: newId }]);
+        else loadInvestimentos();
+      }
+    } catch {
+      loadInvestimentos();
+    } finally {
+      setShowModal(false); 
+      setEditingId(null); 
+      setForm({ ticker: "", tipo: "acao", quantidade: "", preco_medio: "", data_compra: new Date().toISOString().split("T")[0], observacoes: "" });
+    }
   };
 
   const handleEdit = (inv: Investimento) => {
@@ -120,7 +133,14 @@ export default function InvestimentosPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Deseja realmente excluir este investimento?")) return;
-    await investimentosAPI.deletar(id); loadInvestimentos();
+    const original = [...investimentos];
+    setInvestimentos(prev => prev.filter(i => i.id !== id));
+    try {
+      await investimentosAPI.deletar(id);
+    } catch {
+      setInvestimentos(original);
+      alert("Erro ao excluir investimento");
+    }
   };
 
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });

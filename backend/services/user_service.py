@@ -8,7 +8,7 @@ class UserService:
     """Service for user management operations"""
     
     @staticmethod
-    def create_user(db: Session, email: str, nome: str, password: str) -> User:
+    def create_user(db: Session, email: str, nome: str, password: str, plan: str = "free") -> User:
         """Create a new user"""
         # Check if email already exists
         existing = db.query(User).filter(User.email == email).first()
@@ -27,7 +27,7 @@ class UserService:
             email=email,
             nome=nome,
             senha_hash=get_password_hash(password),
-            plan='free'  # Default plan
+            plan=plan  # Plan chosen during registration
         )
         db.add(user)
         db.commit()

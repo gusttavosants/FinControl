@@ -20,7 +20,11 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const data = await authAPI.login(email, senha);
-      if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
+      if (data.user) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+        if (data.message) sessionStorage.setItem("welcomeMessage", data.message);
+        if (data.show_tour) sessionStorage.setItem("showTour", "true");
+      }
       router.push("/");
     } catch (err: any) {
       setError(err.message || "Credenciais inválidas. Tente novamente.");
@@ -126,19 +130,18 @@ export default function LoginPage() {
             </form>
 
             <div className="mt-12">
-               <div className="relative flex items-center justify-center mb-8">
-                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100 dark:border-slate-800"></div></div>
-                  <span className="relative px-4 bg-white dark:bg-[#0a0c10] text-[10px] font-black uppercase tracking-[0.3em] opacity-30">Ou use uma conta</span>
-               </div>
-
-               <div className="grid grid-cols-2 gap-4">
-                  <button className="btn-secondary !py-3 !rounded-2xl flex items-center justify-center gap-2 text-xs font-black">
-                     <Globe size={16} /> Google
-                  </button>
-                  <button className="btn-secondary !py-3 !rounded-2xl flex items-center justify-center gap-2 text-xs font-black">
-                     <Github size={16} /> GitHub
-                  </button>
-               </div>
+               <button type="button" onClick={async () => {
+                   setLoading(true);
+                   try {
+                     await authAPI.demo();
+                     router.push("/");
+                   } catch (err) {
+                     setError("Erro ao acessar modo demonstração.");
+                   } finally { setLoading(false); }
+                 }} 
+                 className="w-full mt-4 !py-3 !rounded-2xl border-2 border-brand/20 text-brand text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-brand/5 transition-all">
+                  <Sparkles size={16} /> Experimentar modo demonstração
+               </button>
             </div>
 
             <p className="mt-12 text-center text-sm font-bold opacity-60">

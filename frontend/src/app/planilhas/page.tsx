@@ -7,7 +7,7 @@ import {
   Wallet, CheckCircle2, RefreshCw, LayoutTemplate, Columns, FileSpreadsheet,
 } from "lucide-react";
 import { receitasAPI, despesasAPI, categoriasAPI } from "@/lib/api";
-import { getCurrentMonth, getCurrentYear } from "@/lib/utils";
+import { getCurrentMonth, getCurrentYear, maskCurrency, parseCurrencyToNumber } from "@/lib/utils";
 import MonthSelector from "@/components/MonthSelector";
 import Modal from "@/components/Modal";
 import SpreadsheetGrid, { SheetData, ColDef, ColType } from "@/components/SpreadsheetGrid";
@@ -239,7 +239,13 @@ export default function PlanilhasPage() {
                       <td style={td}><select value={row.categoria} onChange={e=>onChange(row._id,"categoria",e.target.value)} onBlur={()=>row.descricao&&saveRow(row)} style={{display:"block",width:"100%",minHeight:42,padding:"6px 10px",background:"transparent",border:"none",outline:"none",fontSize:13,color:"var(--text-primary)",appearance:"none"}}><option value="" disabled>Selecione…</option>{cats.map(c=><option key={c} value={c}>{c}</option>)}</select></td>
                       <td style={{...td,position:"relative"}}>
                         <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:11,fontWeight:600,color:"var(--text-muted)",pointerEvents:"none"}}>R$</span>
-                        <input type="number" step="0.01" value={row.valor} onChange={e=>onChange(row._id,"valor",e.target.value)} onBlur={()=>row.descricao&&saveRow(row)} style={{display:"block",width:"100%",minHeight:42,paddingLeft:28,paddingRight:10,background:"transparent",border:"none",outline:"none",fontSize:13,fontWeight:700,textAlign:"right",color:isR?"#10b981":"var(--text-primary)"}}/>
+                        <input
+                          type="text"
+                          value={maskCurrency(row.valor)}
+                          onChange={e => onChange(row._id, "valor", parseCurrencyToNumber(e.target.value))}
+                          onBlur={() => row.descricao && saveRow(row)}
+                          style={{display:"block",width:"100%",minHeight:42,paddingLeft:28,paddingRight:10,background:"transparent",border:"none",outline:"none",fontSize:13,fontWeight:700,textAlign:"right",color:isR?"#10b981":"var(--text-primary)"}}
+                        />
                       </td>
                       <td style={td}>
                         {!isR?(<div style={{display:"flex",alignItems:"center",gap:4,padding:"0 8px"}}>

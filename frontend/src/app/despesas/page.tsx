@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, TrendingDown, Check, Hash, AlertCircle, CheckCircle2 } from "lucide-react";
 import { despesasAPI, categoriasAPI } from "@/lib/api";
-import { formatCurrency, formatDate, getCurrentMonth, getCurrentYear } from "@/lib/utils";
+import { formatCurrency, formatDate, getCurrentMonth, getCurrentYear, maskCurrency, parseCurrencyToNumber } from "@/lib/utils";
 import MonthSelector from "@/components/MonthSelector";
 import Modal from "@/components/Modal";
 
@@ -38,15 +38,18 @@ export default function DespesasPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [filtro, setFiltro] = useState<"todos" | "pago" | "pendente">("todos");
   const [categoriaFiltro, setCategoriaFiltro] = useState("todas");
-  const [form, setForm] = useState({ descricao: "", categoria: "", valor: "", data_vencimento: "", parcela_atual: "", parcela_total: "", observacoes: "", recorrente: false, frequencia_recorrencia: "", parcelas_restantes: "" });
+  const [syncing, setSyncing] = useState<number | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [idToDelete, setIdToDelete] = useState<number | null>(null);
+  const [form, setForm] = useState({ descricao: "", categoria: "", valor: "", data_vencimento: "", parcela_atual: "", parcela_total: "", observacoes: "", recorrente: false, frequencia_recorrencia: "mensal", parcelas_restantes: "" });
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [data, cats] = await Promise.all([despesasAPI.listar(mes, ano), categoriasAPI.despesa()]);
       setDespesas(data); setCategorias(cats);
     } catch {}
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
   useEffect(() => { loadData(); }, [mes, ano]);
 
@@ -70,12 +73,66 @@ export default function DespesasPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const p: any = { descricao: form.descricao, categoria: form.categoria, valor: parseFloat(form.valor), data_vencimento: form.data_vencimento, parcela_atual: form.parcela_atual ? parseInt(form.parcela_atual) : null, parcela_total: form.parcela_total ? parseInt(form.parcela_total) : null, observacoes: form.observacoes || null, recorrente: form.recorrente, frequencia_recorrencia: form.recorrente ? form.frequencia_recorrencia : null, parcelas_restantes: form.recorrente && form.parcelas_restantes ? parseInt(form.parcelas_restantes) : null, pago: false };
-    if (editingId) await despesasAPI.atualizar(editingId, p);
-    else { const r = await despesasAPI.criar(p); if (Array.isArray(r) && r.length > 1) alert(`${r.length} parcelas criadas!`); }
-    setModalOpen(false); loadData();
+    
+    try {
+      if (editingId) {
+        setSyncing(editingId);
+        await despesasAPI.atualizar(editingId, p);
+        setDespesas(prev => prev.map(d => d.id === editingId ? { ...d, ...p } : d));
+      } else {
+        const r = await despesasAPI.criar(p);
+        if (Array.isArray(r) && r.length > 1) {
+          alert(`${r.length} parcelas criadas!`);
+          loadData(); // If many created, simpler to reload
+        } else {
+          // Add new one to state if it's just one
+          const newId = r.id || (Array.isArray(r) ? r[0].id : null);
+          if (newId) setDespesas(prev => [...prev, { ...p, id: newId, pago: false }]);
+          else loadData();
+        }
+      }
+    } catch {
+      loadData(); // Revert on error
+    } finally {
+      setSyncing(null);
+      setModalOpen(false);
+    }
   };
-  const handleDelete = async (id: number) => { if (confirm("Excluir esta despesa?")) { await despesasAPI.deletar(id); loadData(); } };
-  const handleTogglePago = async (id: number) => { await despesasAPI.togglePago(id); loadData(); };
+
+  const openDeleteModal = (id: number) => {
+    setIdToDelete(id);
+    setShowDeleteModal(true);
+  };
+
+  const handleDelete = async () => {
+    if (!idToDelete) return;
+    const original = [...despesas];
+    setDespesas(prev => prev.filter(d => d.id !== idToDelete));
+    try {
+      await despesasAPI.deletar(idToDelete);
+    } catch {
+      setDespesas(original);
+      alert("Erro ao excluir");
+    } finally {
+      setShowDeleteModal(false);
+      setIdToDelete(null);
+    }
+  };
+
+  const handleTogglePago = async (id: number) => {
+    // Optimistic update
+    setDespesas(prev => prev.map(d => d.id === id ? { ...d, pago: !d.pago } : d));
+    setSyncing(id);
+    try {
+      await despesasAPI.togglePago(id);
+    } catch {
+      // Revert on error
+      setDespesas(prev => prev.map(d => d.id === id ? { ...d, pago: !d.pago } : d));
+      alert("Erro ao atualizar pagamento");
+    } finally {
+      setSyncing(null);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -200,8 +257,10 @@ export default function DespesasPage() {
                     <td style={{ textAlign: "center" }}>
                       <button onClick={() => handleTogglePago(d.id)}
                         className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center mx-auto transition-all ${d.pago ? "bg-emerald-500 border-emerald-500 text-white" : ""}`}
-                        style={{ borderColor: d.pago ? "#10b981" : "var(--border-default)" }}>
-                        {d.pago && <Check size={12} strokeWidth={3} />}
+                        style={{ borderColor: d.pago ? "#10b981" : "var(--border-default)", opacity: syncing === d.id ? 0.5 : 1 }}>
+                        {syncing === d.id ? (
+                          <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : d.pago && <Check size={12} strokeWidth={3} />}
                       </button>
                     </td>
                     <td>
@@ -221,7 +280,7 @@ export default function DespesasPage() {
                     <td>
                       <div className="flex items-center justify-center gap-1">
                         <button onClick={() => openEdit(d)} className="btn-ghost px-2 py-1.5"><Pencil size={13} /></button>
-                        <button onClick={() => handleDelete(d.id)} className="btn-ghost px-2 py-1.5" style={{ color: "#ef4444" }}><Trash2 size={13} /></button>
+                        <button onClick={() => openDeleteModal(d.id)} className="btn-ghost px-2 py-1.5" style={{ color: "#ef4444" }} title="Excluir"><Trash2 size={13} /></button>
                       </div>
                     </td>
                   </tr>
@@ -259,7 +318,14 @@ export default function DespesasPage() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>Valor (R$)</label>
-              <input type="number" step="0.01" required value={form.valor} onChange={e => setForm({ ...form, valor: e.target.value })} className="input-field" placeholder="0,00" />
+              <input
+                type="text"
+                required
+                value={maskCurrency(form.valor || 0)}
+                onChange={e => setForm({ ...form, valor: parseCurrencyToNumber(e.target.value).toString() })}
+                className="input-field"
+                placeholder="0,00"
+              />
             </div>
           </div>
           <div>
@@ -307,6 +373,36 @@ export default function DespesasPage() {
           </div>
         </form>
       </Modal>
+
+      {/* ── Delete Confirmation Modal ── */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in-fast" onClick={() => setShowDeleteModal(false)} />
+          <div className="relative w-full max-w-sm bg-white dark:bg-[#161920] rounded-[32px] p-8 shadow-2xl animate-in fade-in zoom-in-95 border border-white/10">
+            <div className="w-16 h-16 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center mb-6 mx-auto">
+              <Trash2 size={32} />
+            </div>
+            <div className="text-center space-y-2 mb-8">
+              <h3 className="text-2xl font-black">Apagar Despesa?</h3>
+              <p className="text-muted text-sm px-4">Esta ação é permanente e não poderá ser desfeita.</p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={handleDelete}
+                className="w-full py-4 bg-rose-500 text-white rounded-2xl font-black text-sm hover:bg-rose-600 transition-all active:scale-95 shadow-lg shadow-rose-500/20"
+              >
+                SIM, APAGAR DESPESA
+              </button>
+              <button 
+                onClick={() => setShowDeleteModal(false)}
+                className="w-full py-4 bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white rounded-2xl font-bold text-sm hover:bg-slate-200 dark:hover:bg-white/10 transition-all active:scale-95"
+              >
+                CANCELAR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

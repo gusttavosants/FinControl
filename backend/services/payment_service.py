@@ -20,13 +20,18 @@ class PaymentService:
     
     # Plan pricing (in cents for Stripe, in BRL for MercadoPago)
     PLAN_PRICES = {
+        "free": {
+            "amount": 999,  # R$ 9.99 (Basico)
+            "stripe_price_id": os.getenv("STRIPE_FREE_PRICE_ID"),
+            "mercadopago_plan_id": os.getenv("MERCADOPAGO_FREE_PLAN_ID"),
+        },
         "pro": {
-            "amount": 1990,  # R$ 19.90
+            "amount": 1999,  # R$ 19.99
             "stripe_price_id": os.getenv("STRIPE_PRO_PRICE_ID"),
             "mercadopago_plan_id": os.getenv("MERCADOPAGO_PRO_PLAN_ID"),
         },
         "premium": {
-            "amount": 3990,  # R$ 39.90
+            "amount": 3999,  # R$ 39.99
             "stripe_price_id": os.getenv("STRIPE_PREMIUM_PRICE_ID"),
             "mercadopago_plan_id": os.getenv("MERCADOPAGO_PREMIUM_PLAN_ID"),
         }
@@ -331,6 +336,85 @@ class PaymentService:
         
         return {"status": "success"}
     
+    @staticmethod
+    def handle_mercadopago_webhook(data: Dict, db: Session) -> Dict[str, Any]:
+        """Handle MercadoPago webhook events"""
+        # MP sends notifications for different topics
+        topic = data.get("type", data.get("topic"))
+        resource_id = data.get("data", {}).get("id", data.get("id"))
+        
+        if topic == "payment":
+            return PaymentService._handle_mercadopago_payment(resource_id, db)
+        
+        return {"status": "ignored"}
+
+    @staticmethod
+    def _handle_mercadopago_payment(payment_id: str, db: Session) -> Dict[str, Any]:
+        """Handle MercadoPago payment update"""
+        try:
+            sdk = mercadopago.SDK(MERCADOPAGO_ACCESS_TOKEN)
+            payment_info_response = sdk.payment().get(payment_id)
+            payment_info = payment_info_response["response"]
+            
+            status = payment_info.get("status")
+            metadata = payment_info.get("metadata", {})
+            user_id = metadata.get("user_id")
+            plan = metadata.get("plan")
+            
+            if status == "approved" and user_id:
+                user_id = int(user_id)
+                
+                subscription = db.query(Subscription).filter(
+                    Subscription.user_id == user_id
+                ).first()
+                
+                if subscription:
+                    subscription.plan = plan
+                    subscription.status = "active"
+                    subscription.mercadopago_customer_id = str(payment_info.get("payer", {}).get("id"))
+                    subscription.current_period_start = datetime.utcnow()
+                    subscription.current_period_end = datetime.utcnow() + timedelta(days=30)
+                else:
+                    subscription = Subscription(
+                        user_id=user_id,
+                        plan=plan,
+                        status="active",
+                        mercadopago_customer_id=str(payment_info.get("payer", {}).get("id")),
+                        current_period_start=datetime.utcnow(),
+                        current_period_end=datetime.utcnow() + timedelta(days=30)
+                    )
+                    db.add(subscription)
+                
+                # Create payment record
+                payment = Payment(
+                    user_id=user_id,
+                    subscription_id=subscription.id if subscription.id else None,
+                    amount=payment_info.get("transaction_amount"),
+                    currency="BRL",
+                    status="succeeded",
+                    payment_method="mercadopago",
+                    mercadopago_payment_id=str(payment_id),
+                    description=f"MercadoPago payment - {plan}"
+                )
+                db.add(payment)
+                
+                # Update user plan
+                user = db.query(User).filter(User.id == user_id).first()
+                if user:
+                    user.plan = plan
+                
+                db.commit()
+                logger.info("MercadoPago payment approved and plan updated", 
+                           user_id=user_id, payment_id=payment_id, plan=plan)
+                
+                return {"status": "success", "action": "plan_updated"}
+            
+            return {"status": "success", "action": "no_action_needed"}
+            
+        except Exception as e:
+            logger.error("MercadoPago payment processing error", error=str(e), payment_id=payment_id)
+            raise HTTPException(status_code=500, detail=f"MP process error: {str(e)}")
+
     @staticmethod
     def cancel_subscription(user: User, db: Session) -> Dict[str, Any]:
         """Cancel user subscription"""

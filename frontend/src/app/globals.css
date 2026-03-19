@@ -84,12 +84,14 @@ body {
 
 /* ===== COMPONENTS ===== */
 @layer components {
+  /* Glassmorphism optimized for performance */
   .glass-card {
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-card);
     box-shadow: var(--shadow-card);
     transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    backdrop-filter: blur(8px);
   }
   .glass-card:hover {
     box-shadow: var(--shadow-md);

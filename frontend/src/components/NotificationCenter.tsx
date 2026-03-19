@@ -66,8 +66,10 @@ export default function NotificationCenter() {
 
   const getIcon = (tipo: string) => {
     switch (tipo.toLowerCase()) {
+      case "vencimento":
       case "alerta":
       case "warning": return <AlertTriangle className="text-amber-500" size={16} />;
+      case "orcamento":
       case "erro":
       case "danger": return <AlertCircle className="text-rose-500" size={16} />;
       case "sucesso":

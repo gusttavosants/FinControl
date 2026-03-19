@@ -32,24 +32,42 @@ def get_available_plans():
         "plans": [
             {
                 "id": "free",
-                "name": "Free",
-                "price": 0,
+                "name": "Básico",
+                "price": 9.99,
                 "currency": "BRL",
-                "features": settings.FREE_PLAN_LIMITS,
+                "features": {
+                    "max_goals": settings.FREE_PLAN_LIMITS.get("max_goals"),
+                    "max_investments": settings.FREE_PLAN_LIMITS.get("max_investments"),
+                    "export_enabled": settings.FREE_PLAN_LIMITS.get("export_enabled"),
+                    "ai_chat_enabled": settings.FREE_PLAN_LIMITS.get("ai_chat_enabled"),
+                    "shared_account_enabled": settings.FREE_PLAN_LIMITS.get("shared_account_enabled"),
+                },
             },
             {
                 "id": "pro",
-                "name": "Pro",
-                "price": 19.90,
+                "name": "Profissional",
+                "price": 19.99,
                 "currency": "BRL",
-                "features": settings.PRO_PLAN_LIMITS,
+                "features": {
+                    "max_goals": settings.PRO_PLAN_LIMITS.get("max_goals"),
+                    "max_investments": settings.PRO_PLAN_LIMITS.get("max_investments"),
+                    "export_enabled": settings.PRO_PLAN_LIMITS.get("export_enabled"),
+                    "ai_chat_enabled": settings.PRO_PLAN_LIMITS.get("ai_chat_enabled"),
+                    "shared_account_enabled": settings.PRO_PLAN_LIMITS.get("shared_account_enabled"),
+                },
             },
             {
                 "id": "premium",
                 "name": "Premium",
-                "price": 39.90,
+                "price": 39.99,
                 "currency": "BRL",
-                "features": settings.PREMIUM_PLAN_LIMITS,
+                "features": {
+                    "max_goals": settings.PREMIUM_PLAN_LIMITS.get("max_goals"),
+                    "max_investments": settings.PREMIUM_PLAN_LIMITS.get("max_investments"),
+                    "export_enabled": settings.PREMIUM_PLAN_LIMITS.get("export_enabled"),
+                    "ai_chat_enabled": settings.PREMIUM_PLAN_LIMITS.get("ai_chat_enabled"),
+                    "shared_account_enabled": settings.PREMIUM_PLAN_LIMITS.get("shared_account_enabled"),
+                },
             },
         ]
     }
