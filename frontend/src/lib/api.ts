@@ -2,7 +2,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? `${process.env.NEXT_PUBLIC_API_URL}/api`
   : "/api";
 
-async function fetchAPI(endpoint: string, options?: RequestInit) {
+async function fetchAPI(endpoint: string, options?: RequestInit & { noRedirect?: boolean }) {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const headers: Record<string, string> = {
@@ -18,11 +18,26 @@ async function fetchAPI(endpoint: string, options?: RequestInit) {
     headers,
     ...options,
   });
+
   if (!res.ok && res.status !== 204) {
     if (res.status === 401 && typeof window !== "undefined") {
+      console.warn("[AUTH] Session expired (401). Handling redirect logic...");
       localStorage.removeItem("token");
-      window.location.href = "/login";
-      throw new Error("Sessão expirada");
+      
+      // Normalize pathname (remove trailing slash except for root, and handle backslashes)
+      const rawPath = window.location.pathname.replace(/\\/g, "/");
+      const path = rawPath.length > 1 && rawPath.endsWith("/") ? rawPath.slice(0, -1) : (rawPath || "/");
+      
+      const PUBLIC_ROUTES = ["/", "/login", "/register", "/pricing"];
+      const isPublicPath = PUBLIC_ROUTES.includes(path);
+      
+      console.log(`[PATH] Current Path: ${path} | Public: ${isPublicPath} | noRedirect: ${!!options?.noRedirect}`);
+
+      if (!options?.noRedirect && !isPublicPath) {
+        console.log("[AUTH] Redirecting to /login...");
+        window.location.href = "/login";
+      }
+      throw new Error("Sessao expirada");
     }
     const err = await res.json().catch(() => ({ detail: "Erro desconhecido" }));
     throw new Error(err.detail || `API Error: ${res.status}`);
@@ -49,11 +64,11 @@ export const authAPI = {
     localStorage.setItem("token", data.access_token);
     return data;
   },
-  register: async (nome: string, email: string, senha: string) => {
+  register: async (nome: string, email: string, senha: string, plan: string) => {
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nome, email, senha }),
+      body: JSON.stringify({ nome, email, senha, plan }),
     });
     if (!res.ok) {
       const err = await res
@@ -63,11 +78,45 @@ export const authAPI = {
     }
     return res.json();
   },
-  me: () => fetchAPI("/auth/me"),
+  me: (options?: any) => fetchAPI("/auth/me", options),
+  demo: async () => {
+    const res = await fetch(`${API_BASE}/auth/demo`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!res.ok) throw new Error("Erro ao acessar modo demonstração");
+    const data = await res.json();
+    localStorage.setItem("token", data.access_token);
+    if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
+    return data;
+  },
   logout: () => {
     localStorage.removeItem("token");
     window.location.href = "/login";
   },
+  markTourSeen: () => fetchAPI("/users/me/tour", { method: "PUT" }),
+};
+
+
+// Admin
+export const adminAPI = {
+  listUsers: () => fetchAPI("/admin/users"),
+  updateRole: (userId: number, role: string) =>
+    fetchAPI(`/admin/users/${userId}/role`, {
+      method: "PUT",
+      body: JSON.stringify({ role }),
+    }),
+  updateStatus: (userId: number, is_active: boolean) =>
+    fetchAPI(`/admin/users/${userId}/status`, {
+      method: "PUT",
+      body: JSON.stringify({ is_active }),
+    }),
+  updatePlan: (userId: number, plan: string) =>
+    fetchAPI(`/admin/users/${userId}/plan`, {
+      method: "PUT",
+      body: JSON.stringify({ plan }),
+    }),
+  getLogs: (limit: number = 100) => fetchAPI(`/admin/logs?limit=${limit}`),
 };
 
 // Chat
@@ -265,4 +314,30 @@ export const notificationsAPI = {
   gerar: () => fetchAPI("/notifications/generate", { method: "POST" }),
   deletar: (id: number) =>
     fetchAPI(`/notifications/${id}`, { method: "DELETE" }),
+};
+
+// Pagamentos
+export const paymentAPI = {
+  checkout: (plan: string, payment_method: string) =>
+    fetchAPI("/payment/checkout", {
+      method: "POST",
+      body: JSON.stringify({ plan, payment_method }),
+    }),
+  getSubscription: () => fetchAPI("/payment/subscription"),
+  getHistory: () => fetchAPI("/payment/payments/history"),
+  cancelSubscription: (reason?: string) =>
+    fetchAPI("/payment/subscription/cancel", {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+};
+
+// Notas
+export const notesAPI = {
+  listar: () => fetchAPI("/notes"),
+  obter: (id: number) => fetchAPI(`/notes/${id}`),
+  criar: (data: any) => fetchAPI("/notes", { method: "POST", body: JSON.stringify(data) }),
+  atualizar: (id: number, data: any) => fetchAPI(`/notes/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deletar: (id: number) => fetchAPI(`/notes/${id}`, { method: "DELETE" }),
+  processar: (id: number) => fetchAPI(`/notes/${id}/process`, { method: "POST" }),
 };

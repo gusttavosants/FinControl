@@ -287,12 +287,6 @@ export default function ConfiguracoesPage() {
                     <p className="text-[11px] mb-4 leading-relaxed" style={{ color: "var(--text-muted)" }}>Baixe toda a sua base de dados (JSON) para manter uma cópia offline segura.</p>
                     <button onClick={handleExport} className="w-full py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-[10px] font-black uppercase tracking-widest hover:bg-brand hover:text-white transition-all">Exportar Arquivo</button>
                  </div>
-                 <div className="p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-amber-500/30 transition-all group">
-                    <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl w-fit mb-4 group-hover:scale-110 transition-transform"><Sparkles size={20} className="text-amber-500" /></div>
-                    <h4 className="text-sm font-black mb-1" style={{ color: "var(--text-primary)" }}>Popular Painel</h4>
-                    <p className="text-[11px] mb-4 leading-relaxed" style={{ color: "var(--text-muted)" }}>Não tem dados ainda? Gere registros inteligentes para ver a potência da nossa análise.</p>
-                    <button onClick={handleSeed} disabled={loading} className="w-full py-2 rounded-xl bg-amber-500/10 text-amber-600 text-[10px] font-black uppercase tracking-widest hover:bg-amber-500 hover:text-white transition-all">Gerar Mock Inteligente</button>
-                 </div>
               </div>
 
               <div className="mt-6 p-6 rounded-2xl bg-rose-500/5 border-2 border-rose-500/10">
