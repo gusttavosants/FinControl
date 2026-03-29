@@ -134,8 +134,8 @@ app.include_router(api_router, prefix="/api")
 def root():
     """Root endpoint - returns API info"""
     return {
-        "app": "Controle Financeiro Pessoal",
-        "version": "1.0.0",
+        "app": "ZenCash - Elite",
+        "version": "2.1.0",
         "status": "running",
         "docs": "/docs",
         "health": "/api/health",
@@ -156,7 +156,9 @@ def health_check():
         db.close()
 
         return {
-            "status": "ok",
+            "status": "healthy",
+            "app": "ZenCash - Elite",
+            "version": "2.1.0",
             "database": "connected",
             "timestamp": str(result[0]) if result else None,
         }
