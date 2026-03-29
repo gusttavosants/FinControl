@@ -2,77 +2,84 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===== FINCONTROL DESIGN SYSTEM v5 — Premium SaaS ===== */
+/* ===== ZENCASH DESIGN SYSTEM v1 — Zen Minimalism ===== */
 
 :root {
-  --bg-base: #f6f7f9;
+  /* Zen-Premium Palette (Light) */
+  --bg-base: #f7f6f2;      /* Warm Bone */
+  --bg-base-rgb: 247, 246, 242;
   --bg-surface: #ffffff;
   --bg-card: #ffffff;
-  --bg-card-hover: #f8f9fb;
-  --bg-elevated: #f1f3f6;
-  --border-subtle: #e8eaed;
-  --border-default: #d1d5db;
-  --text-primary: #0f1117;
-  --text-secondary: #4b5563;
-  --text-muted: #9ca3af;
+  --bg-card-hover: #f0eee8;
+  --bg-elevated: #e9e6df;
+  --border-subtle: #e1ddd3;
+  --border-default: #d1cfc7;
+  
+  --text-primary: #1a1f1d;
+  --text-secondary: #4a5250;
+  --text-muted: #8a918f;
 
-  --brand: #111827;
-  --brand-hover: #1f2937;
+  --brand: #2d4a43;        /* Deep Forest */
+  --brand-hover: #1f3530;
   --brand-text: #ffffff;
-  --brand-muted: rgba(17,24,39,0.06);
+  --brand-muted: rgba(45,74,67,0.06);
 
-  --accent: #10b981;
-  --accent-muted: rgba(16,185,129,0.1);
-  --danger: #ef4444;
-  --danger-muted: rgba(239,68,68,0.1);
-  --warn: #f59e0b;
-  --warn-muted: rgba(245,158,11,0.1);
-  --purple: #818cf8;
-  --purple-muted: rgba(129,140,248,0.1);
+  --accent: #7c9085;       /* Muted Sage */
+  --accent-muted: rgba(124,144,133,0.15);
+  --danger: #9c5a54;       /* Muted Terracotta */
+  --danger-muted: rgba(156,90,84,0.1);
+  --warn: #b89158;         /* Ochre */
+  --warn-muted: rgba(184,145,88,0.1);
+  
+  --radius-card: 24px;
+  --radius-sm: 12px;
+  --shadow-card: 0 4px 20px -5px rgba(45, 74, 67, 0.08);
+  --shadow-md: 0 12px 30px -8px rgba(45, 74, 67, 0.12);
+  --shadow-lg: 0 24px 50px -12px rgba(45, 74, 67, 0.18);
 
-  --sidebar-bg: #ffffff;
-  --sidebar-border: #e8eaed;
-  --sidebar-hover: #f3f4f6;
-  --sidebar-active-bg: #f0fdf4;
-  --sidebar-active-border: #10b981;
-  --sidebar-text: #6b7280;
-  --sidebar-text-active: #065f46;
-
-  --radius-card: 14px;
-  --radius-sm: 8px;
-  --shadow-card: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
-  --shadow-md: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
-  --shadow-lg: 0 8px 30px rgba(0,0,0,.1), 0 4px 8px rgba(0,0,0,.06);
+  /* Sidebar Tokens (Premium Dark Sidebar by default) */
+  --sidebar-bg: #1a2a26;           /* Ultra-Deep Forest */
+  --sidebar-border: rgba(255,255,255,0.04);
+  --sidebar-text: rgba(255,255,255,0.5);
+  --sidebar-text-active: #ffffff;
+  --sidebar-hover: rgba(255,255,255,0.06);
+  --sidebar-active-bg: rgba(255,255,255,0.08);
+  
+  --brand-rgb: 45, 74, 67;
 }
 
 .dark {
-  --bg-base: #0d0f14;
-  --bg-surface: #111318;
-  --bg-card: #161920;
-  --bg-card-hover: #1c1f28;
-  --bg-elevated: #1c1f28;
-  --border-subtle: #252830;
-  --border-default: #32363f;
-  --text-primary: #f1f3f8;
-  --text-secondary: #9aa3b4;
-  --text-muted: #5c6478;
+  /* Zen-Premium Palette (Dark) */
+  --bg-base: #0c0e0d;      /* Obsidian Forest */
+  --bg-base-rgb: 12, 14, 13;
+  --bg-surface: #121514;
+  --bg-card: #181d1b;
+  --bg-card-hover: #222927;
+  --bg-elevated: #222927;
+  --border-subtle: #242b29;
+  --border-default: #34413e;
+  
+  --text-primary: #f0f4f3;
+  --text-secondary: #94aca7;
+  --text-muted: #5e736f;
 
-  --brand: #e8eaed;
-  --brand-hover: #f1f3f8;
-  --brand-text: #0d0f14;
-  --brand-muted: rgba(232,234,237,0.08);
+  --brand: #8eb69b;        /* Sage in Dark Mode */
+  --brand-hover: #a3c4ae;
+  --brand-text: #0c0e0d;
+  --brand-muted: rgba(142,182,155,0.12);
 
-  --sidebar-bg: #0d0f14;
-  --sidebar-border: #1e2028;
-  --sidebar-hover: #161920;
-  --sidebar-active-bg: rgba(16,185,129,0.1);
-  --sidebar-active-border: #10b981;
-  --sidebar-text: #6b7280;
-  --sidebar-text-active: #10b981;
+  --accent: #5e736a;
+  --accent-muted: rgba(94,115,106,0.15);
+  
+  --shadow-card: 0 4px 20px rgba(0,0,0,.4);
+  --shadow-md: 0 12px 30px rgba(0,0,0,.6);
+  --shadow-lg: 0 24px 50px rgba(0,0,0,.8);
 
-  --shadow-card: 0 1px 3px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.2);
-  --shadow-md: 0 4px 12px rgba(0,0,0,.4), 0 2px 4px rgba(0,0,0,.2);
-  --shadow-lg: 0 8px 30px rgba(0,0,0,.5), 0 4px 8px rgba(0,0,0,.3);
+  /* Dark mode overrides if needed, but keeping it dark is consistent */
+  --sidebar-bg: #060807;
+  --sidebar-border: rgba(255,255,255,0.03);
+  
+  --brand-rgb: 142, 182, 155;
 }
 
 body {
@@ -120,62 +127,44 @@ body {
 
   /* Buttons */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 font-semibold text-sm rounded-lg px-4 py-2.5 transition-all duration-150 outline-none select-none;
+    @apply inline-flex items-center justify-center gap-3 font-black text-sm rounded-[18px] px-8 py-3.5 transition-all duration-300 outline-none select-none active:scale-[0.98];
     background: var(--brand);
     color: var(--brand-text);
-    box-shadow: 0 1px 2px rgba(0,0,0,.12);
+    box-shadow: 0 10px 30px -10px rgba(45, 74, 67, 0.3);
   }
   .btn-primary:hover {
     background: var(--brand-hover);
-    box-shadow: 0 2px 6px rgba(0,0,0,.18);
-    transform: translateY(-0.5px);
+    box-shadow: 0 15px 40px -12px rgba(45, 74, 67, 0.4);
+    transform: translateY(-2px);
   }
   .btn-primary:active { transform: translateY(0); }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 font-semibold text-sm rounded-lg px-4 py-2.5 transition-all duration-150 outline-none select-none;
-    background: var(--bg-card);
+    @apply inline-flex items-center justify-center gap-2 font-bold text-sm rounded-[18px] px-6 py-3 transition-all duration-300 outline-none select-none;
+    background: var(--bg-surface);
     color: var(--text-primary);
     border: 1px solid var(--border-subtle);
-    box-shadow: 0 1px 2px rgba(0,0,0,.06);
+    box-shadow: 0 4px 12px rgba(0,0,0,.03);
   }
   .btn-secondary:hover {
     background: var(--bg-card-hover);
     border-color: var(--border-default);
-    box-shadow: 0 2px 4px rgba(0,0,0,.08);
-  }
-
-  .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 font-medium text-sm rounded-lg px-3 py-1.5 transition-all duration-150;
-    color: var(--text-secondary);
-  }
-  .btn-ghost:hover {
-    background: var(--bg-elevated);
-    color: var(--text-primary);
-  }
-
-  .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 font-semibold text-sm rounded-lg px-4 py-2.5 transition-all duration-150;
-    background: rgba(239,68,68,.1);
-    color: #ef4444;
-    border: 1px solid rgba(239,68,68,.2);
-  }
-  .btn-danger:hover {
-    background: #ef4444;
-    color: #fff;
+    box-shadow: 0 8px 20px rgba(0,0,0,.06);
+    transform: translateY(-1px);
   }
 
   /* Inputs */
   .input-field {
-    @apply w-full px-3 py-2.5 text-sm rounded-lg transition-all duration-200 outline-none;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-subtle);
+    @apply w-full px-5 py-3.5 text-base rounded-[18px] transition-all duration-300 outline-none border;
+    background: var(--bg-surface);
+    border-color: var(--border-subtle);
     color: var(--text-primary);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
   }
-  .input-field::placeholder { color: var(--text-muted); }
+  .input-field::placeholder { color: var(--text-muted); opacity: 0.5; }
   .input-field:focus {
-    border-color: #10b981;
-    box-shadow: 0 0 0 3px rgba(16,185,129,.12);
+    border-color: var(--brand);
+    box-shadow: 0 0 0 4px var(--brand-muted);
     background: var(--bg-surface);
   }
 
@@ -305,6 +294,8 @@ body {
 .animate-slide-left  { animation: slideInLeft 0.25s ease-out both; }
 .animate-in          { animation: fadeInUp 0.25s ease-out both; }
 .animate-spin        { animation: spin 0.9s linear infinite; }
+.animate-loading     { animation: loading 2s infinite ease-in-out; }
+.animate-shimmer     { animation: shimmer 2s infinite linear; }
 
 /* Stagger children */
 .stagger-children > * { animation: fadeInUp 0.3s ease-out both; }

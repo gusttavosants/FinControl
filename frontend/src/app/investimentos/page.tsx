@@ -153,21 +153,31 @@ export default function InvestimentosPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="page-title text-gradient">Investimentos</h1>
-          <p className="page-subtitle">Gestão dinâmica de patrimônio e renda variável</p>
+      {/* ── Zen-Premium Header ── */}
+      <section className="relative pt-6">
+        <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 relative z-10">
+          <div className="space-y-4">
+             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/10">
+                <Briefcase size={14} className="text-blue-500" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">Patrimônio & Renda</span>
+             </div>
+             <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-none" style={{ color: "var(--text-primary)" }}>
+                Seus <span className="opacity-30 italic">investimentos.</span>
+             </h1>
+             <p className="text-lg md:text-2xl text-[var(--text-secondary)] font-medium max-w-xl">
+                Domine o mercado e construa sua liberdade com inteligência estratégica.
+             </p>
+          </div>
+          <div className="flex items-center gap-4 bg-white/40 dark:bg-black/20 p-2 rounded-[28px] border border-white/20 backdrop-blur-xl shadow-xl">
+             <button onClick={() => loadCotacoes()} className="bg-white/50 dark:bg-black/20 text-[var(--text-primary)] px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-white transition-all border border-white/10" disabled={loadingCotacoes}>
+              <RefreshCw size={16} className={loadingCotacoes ? "animate-spin" : ""} /> Atualizar Mercado
+            </button>
+            <button onClick={() => { setEditingId(null); setForm({ ticker: "", tipo: "acao", quantidade: "", preco_medio: "", data_compra: new Date().toISOString().split("T")[0], observacoes: "" }); setShowModal(true); }} className="bg-blue-600 text-white px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-blue-600/20">
+              <Plus size={16} /> Novo Aporte
+            </button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => loadCotacoes()} className="btn-secondary" disabled={loadingCotacoes}>
-            <RefreshCw size={16} className={loadingCotacoes ? "animate-spin" : ""} /> Atualizar Mercado
-          </button>
-          <button onClick={() => { setEditingId(null); setForm({ ticker: "", tipo: "acao", quantidade: "", preco_medio: "", data_compra: new Date().toISOString().split("T")[0], observacoes: "" }); setShowModal(true); }} className="btn-primary">
-            <Plus size={16} /> Novo Aporte
-          </button>
-        </div>
-      </div>
+      </section>
 
       {/* ── Search Bar ── */}
       <div className="glass-card p-5 border-l-4 border-l-brand relative overflow-hidden group">

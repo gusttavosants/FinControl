@@ -13,8 +13,7 @@ from core.logging import logger
 router = APIRouter()
 
 class CheckoutRequest(BaseModel):
-    plan: str  # "pro" or "premium"
-    payment_method: str  # "stripe" or "mercadopago"
+    plan: str  # "basico", "pro" or "premium"
 
 class CancelSubscriptionRequest(BaseModel):
     reason: Optional[str] = None
@@ -25,28 +24,16 @@ def create_checkout(
     user: User = Depends(require_user),
     db: Session = Depends(get_db)
 ):
-    """Create checkout session for subscription"""
-    if data.plan not in ["pro", "premium"]:
+    """Create checkout session for subscription using Stripe"""
+    if data.plan not in ["basico", "pro", "premium"]:
         raise HTTPException(status_code=400, detail="Invalid plan")
     
-    if data.payment_method == "stripe":
-        result = PaymentService.create_stripe_checkout_session(user, data.plan, db)
-        return {
-            "success": True,
-            "payment_method": "stripe",
-            **result
-        }
-    
-    elif data.payment_method == "mercadopago":
-        result = PaymentService.create_mercadopago_preference(user, data.plan, db)
-        return {
-            "success": True,
-            "payment_method": "mercadopago",
-            **result
-        }
-    
-    else:
-        raise HTTPException(status_code=400, detail="Invalid payment method")
+    result = PaymentService.create_stripe_checkout_session(user, data.plan, db)
+    return {
+        "success": True,
+        "payment_method": "stripe",
+        **result
+    }
 
 @router.get("/subscription")
 def get_subscription(
@@ -60,7 +47,7 @@ def get_subscription(
     
     if not subscription:
         return {
-            "plan": "free",
+            "plan": "trial",
             "status": "active",
             "has_subscription": False
         }
@@ -108,6 +95,14 @@ def get_payment_history(
         "created_at": p.created_at.isoformat(),
     } for p in payments]
 
+@router.get("/portal")
+def create_portal(
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db)
+):
+    """Create Stripe customer portal session"""
+    return PaymentService.create_stripe_portal_session(user, db)
+
 @router.post("/webhooks/stripe")
 async def stripe_webhook(
     request: Request,
@@ -126,19 +121,3 @@ async def stripe_webhook(
     except Exception as e:
         logger.error("Unexpected webhook error", error=str(e))
         raise HTTPException(status_code=500, detail="Webhook processing failed")
-
-    @router.post("/webhooks/mercadopago")
-    async def mercadopago_webhook(
-        request: Request,
-        db: Session = Depends(get_db)
-    ):
-        """Handle MercadoPago webhooks"""
-        try:
-            data = await request.json()
-            logger.info("MercadoPago webhook received", data=data)
-            
-            result = PaymentService.handle_mercadopago_webhook(data, db)
-            return result
-        except Exception as e:
-            logger.error("MercadoPago webhook error", error=str(e))
-            return {"status": "error", "message": str(e)}

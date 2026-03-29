@@ -21,7 +21,7 @@ export default function OnboardingPage() {
   const steps = [
     {
       number: 1,
-      title: "Bem-vindo ao FinControl! 🎉",
+      title: "Bem-vindo ao ZenCash! 🎉",
       description: "Vamos configurar sua conta em 3 passos simples",
       icon: <Sparkles className="w-12 h-12 text-indigo-600" />,
     },
@@ -200,7 +200,7 @@ export default function OnboardingPage() {
                   Conta configurada com sucesso!
                 </h2>
                 <p className="text-gray-600">
-                  Agora você pode começar a usar todas as funcionalidades do FinControl
+                  Agora você pode começar a usar todas as funcionalidades do ZenCash
                 </p>
               </div>
             </div>

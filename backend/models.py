@@ -23,8 +23,9 @@ class User(Base):
     nome = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
     senha_hash = Column(String(255), nullable=False)
-    plan = Column(String(20), nullable=False, default="free")  # free, pro, premium
-    role = Column(String(20), nullable=False, default="trial")  # trial, user, moderator, admin
+    plan = Column(String(20), nullable=False, default="trial")  # trial, basico, premium
+    role = Column(String(20), nullable=False, default="user")  
+    trial_until = Column(DateTime, nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     last_login = Column(DateTime, nullable=True)
     has_seen_tour = Column(Boolean, nullable=False, default=False)

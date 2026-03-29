@@ -84,14 +84,26 @@ export default function RelatoriosPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="page-title text-gradient">Relatórios</h1>
-          <p className="page-subtitle">Análise detalhada da sua saúde financeira</p>
+      {/* ── Zen-Premium Header ── */}
+      <section className="relative pt-6">
+        <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 relative z-10">
+          <div className="space-y-4">
+             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/10">
+                <BarChart3 size={14} className="text-indigo-500" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500">Inteligência de Dados</span>
+             </div>
+             <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-none" style={{ color: "var(--text-primary)" }}>
+                Seus <span className="opacity-30 italic">relatórios.</span>
+             </h1>
+             <p className="text-lg md:text-2xl text-[var(--text-secondary)] font-medium max-w-xl">
+                Decifre os números e transforme dados brutos em sabedoria financeira.
+             </p>
+          </div>
+          <div className="flex items-center gap-4 bg-white/40 dark:bg-black/20 p-2 rounded-[28px] border border-white/20 backdrop-blur-xl shadow-xl">
+            <MonthSelector mes={mes} ano={ano} onChange={(m, a) => { setMes(m); setAno(a); }} />
+          </div>
         </div>
-        <MonthSelector mes={mes} ano={ano} onChange={(m, a) => { setMes(m); setAno(a); }} />
-      </div>
+      </section>
 
       {/* ── KPI Grid ── */}
       {relatorio && (

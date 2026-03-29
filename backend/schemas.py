@@ -24,6 +24,7 @@ class UserResponse(BaseModel):
     plan: str
     is_active: bool
     has_seen_tour: bool
+    trial_until: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -32,7 +33,7 @@ class UserResponse(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
-    user: UserResponse
+    user: Optional[UserResponse] = None
     message: Optional[str] = None
     show_tour: bool = False
 
@@ -46,6 +47,7 @@ class UserAdminResponse(BaseModel):
     plan: str
     is_active: bool
     has_seen_tour: bool
+    trial_until: Optional[datetime] = None
     created_at: datetime
 
     class Config:
@@ -61,7 +63,7 @@ class UserStatusUpdate(BaseModel):
 
 
 class UserPlanUpdate(BaseModel):
-    plan: str  # free, pro, premium
+    plan: str  # trial, basico, premium
 
 
 # --- Receita Schemas ---

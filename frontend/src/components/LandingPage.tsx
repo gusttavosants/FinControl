@@ -1,31 +1,91 @@
 "use client";
 
-import { ArrowRight, BarChart3, Shield, Users, Zap, CheckCircle2, Star, Globe, Smartphone, Lock, ShieldCheck, HeartHandshake, HelpCircle, X, Check, Loader2, Sparkles, Layout, Menu } from "lucide-react";
+import { ArrowRight, BarChart3, Shield, Users, Zap, CheckCircle2, Star, Globe, Smartphone, Lock, ShieldCheck, HeartHandshake, HelpCircle, X, Check, Loader2, Sparkles, Layout, Menu, Leaf, Wallet, TrendingUp, PieChart, Info } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function LandingPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [plans, setPlans] = useState<any[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<string | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [plan, setPlan] = useState("trial");
 
   useEffect(() => {
-    // Fetch available plans
+    const p = searchParams.get("plan");
+    if (p && ["trial", "basico", "pro", "premium"].includes(p)) {
+      setPlan(p);
+    }
+  }, [searchParams]);
+
+  const handleCheckout = async (planId: string) => {
+    if (planId === "trial") {
+      sessionStorage.setItem("welcomeMessage", "Bem-vindo ao ZenCash! Sua jornada de 7 dias começa agora.");
+      sessionStorage.setItem("showTour", "true");
+      router.push("/");
+      return;
+    }
+    
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push(`/register?plan=${planId}`);
+      return;
+    }
+
+    setCheckoutLoading(planId);
+    
+    try {
+      const response = await fetch(`${API_URL}/api/payment/checkout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          plan: planId,
+          payment_method: "stripe"
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || "Falha ao iniciar checkout");
+      }
+
+      const data = await response.json();
+      
+      if (data.checkout_url) {
+        window.location.href = data.checkout_url;
+      } else {
+        throw new Error("URL de checkout não recebida");
+      }
+    } catch (err: any) {
+      console.error("Checkout error:", err);
+      alert(`Erro: ${err.message}`);
+    } finally {
+      setCheckoutLoading(null);
+    }
+  };
+
+  useEffect(() => {
     fetch(`${API_URL}/api/plans/available`)
       .then(res => res.json())
       .then(data => setPlans(data.plans || []))
       .catch(() => setPlans([
-        { id: "free", name: "Básico", price: 9.99, features: { max_goals: 3, max_investments: 10, export_enabled: false, ai_chat_enabled: false, shared_account_enabled: false } },
-        { id: "pro", name: "Profissional", price: 19.99, features: { max_goals: 20, max_investments: 100, export_enabled: true, ai_chat_enabled: true, shared_account_enabled: true } },
-        { id: "premium", name: "Premium", price: 39.99, features: { max_goals: -1, max_investments: -1, export_enabled: true, ai_chat_enabled: true, shared_account_enabled: true } }
+        { id: "trial", name: "Zen Trial", price: 0, features: { max_goals: 3, max_investments: 10, export_enabled: false, ai_chat_enabled: false, shared_account_enabled: false } },
+        { id: "basico", name: "Zen Básico", price: 9.90, features: { max_goals: 12, max_investments: 50, export_enabled: true, ai_chat_enabled: false, shared_account_enabled: true } },
+        { id: "pro", name: "Zen Pro", price: 19.90, features: { max_goals: 40, max_investments: 200, export_enabled: true, ai_chat_enabled: true, shared_account_enabled: true } },
+        { id: "premium", name: "Zen Elite", price: 39.90, features: { max_goals: -1, max_investments: -1, export_enabled: true, ai_chat_enabled: true, shared_account_enabled: true } }
       ]))
       .finally(() => setLoadingPlans(false));
 
-    // Fetch current plan if logged in
     const token = localStorage.getItem("token");
     if (token) {
       fetch(`${API_URL}/api/plans/current`, { headers: { Authorization: `Bearer ${token}` } })
@@ -36,167 +96,216 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white selection:bg-brand/30 selection:text-white">
-      {/* ── Navigation ── */}
-      <nav className="fixed top-0 w-full z-[100] backdrop-blur-xl border-b border-white/5 bg-[#0a0a0b]/80">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand to-purple-600 flex items-center justify-center shadow-lg shadow-brand/20">
-                <Zap size={20} className="text-white" />
+    <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)] selection:bg-[var(--brand)] selection:text-[var(--brand-text)] font-sans antialiased overflow-x-hidden">
+      {/* ── Fixed Navigation ── */}
+      <nav className="fixed top-0 w-full z-[100] transition-all duration-300">
+        <div className="max-w-7xl mx-auto px-6 h-24 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3 group">
+             <div className="w-11 h-11 rounded-2xl bg-[var(--brand)] flex items-center justify-center shadow-lg shadow-[var(--brand)]/20 group-hover:scale-105 transition-transform">
+                <Leaf size={22} className="text-[var(--brand-text)]" />
              </div>
-             <span className="text-xl font-black tracking-tighter">FinControl<span className="text-brand">.</span></span>
-          </div>
+             <span className="text-2xl font-black tracking-tighter" style={{ color: "var(--brand)" }}>ZenCash<span className="opacity-40">.</span></span>
+          </Link>
           
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-10">
-            <Link href="#features" className="text-xs font-black uppercase tracking-widest opacity-60 hover:opacity-100 transition-opacity">Recursos</Link>
-            <Link href="#pricing" className="text-xs font-black uppercase tracking-widest opacity-60 hover:opacity-100 transition-opacity">Planos</Link>
-            <Link href="/suporte" className="text-xs font-black uppercase tracking-widest opacity-60 hover:opacity-100 transition-opacity">Suporte</Link>
-            <Link href="/login" className="text-xs font-black uppercase tracking-widest opacity-60 hover:opacity-100 transition-opacity">Entrar</Link>
-            <Link href="/register" className="bg-white text-black px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-brand hover:text-white transition-all transform active:scale-95 shadow-xl shadow-white/5">Começar</Link>
+          <div className="hidden md:flex items-center gap-2 p-1.5 rounded-2xl bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-white/20 dark:border-white/5 shadow-xl shadow-black/[0.03]">
+             <NavLink href="#features">Recursos</NavLink>
+             <NavLink href="#pricing">Planos</NavLink>
+             <NavLink href="/suporte">Suporte</NavLink>
+             <div className="w-px h-6 bg-[var(--border-subtle)] mx-2" />
+             <Link href="/login" className="px-5 py-2 text-sm font-bold opacity-60 hover:opacity-100 transition-opacity">Entrar</Link>
+             <Link href="/register" className="bg-[var(--brand)] text-[var(--brand-text)] px-6 py-2 rounded-xl text-sm font-black hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-[var(--brand)]/10">Abra sua Conta</Link>
           </div>
 
-          {/* Mobile Nav Toggle */}
-          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-white">
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-3 rounded-2xl bg-white/50 backdrop-blur-lg border border-white/20">
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
 
-        {/* Mobile Nav Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden absolute top-20 left-0 w-full bg-[#0a0a0b] border-b border-white/5 p-6 animate-fade-in space-y-6">
-            <Link href="#features" onClick={() => setMobileMenuOpen(false)} className="block text-sm font-black uppercase tracking-widest">Recursos</Link>
-            <Link href="#pricing" onClick={() => setMobileMenuOpen(false)} className="block text-sm font-black uppercase tracking-widest">Planos</Link>
-            <Link href="/suporte" className="block text-sm font-black uppercase tracking-widest">Suporte</Link>
-            <Link href="/login" className="block text-sm font-black uppercase tracking-widest">Entrar</Link>
-            <Link href="/register" className="block bg-white text-black px-6 py-4 rounded-xl text-center text-sm font-black uppercase tracking-widest">Começar Agora</Link>
+          <div className="md:hidden absolute top-24 left-6 right-6 bg-white/95 dark:bg-black/95 backdrop-blur-2xl rounded-3xl border border-white/20 p-8 shadow-2xl animate-in slide-in-from-top-4 space-y-6">
+            <Link href="#features" onClick={() => setMobileMenuOpen(false)} className="block text-lg font-black italic">Recursos</Link>
+            <Link href="#pricing" onClick={() => setMobileMenuOpen(false)} className="block text-lg font-black italic">Planos</Link>
+            <Link href="/suporte" className="block text-lg font-black italic">Suporte</Link>
+            <div className="h-px bg-[var(--border-subtle)]" />
+            <Link href="/login" className="block text-lg font-bold">Entrar</Link>
+            <Link href="/register" className="block bg-[var(--brand)] text-[var(--brand-text)] px-8 py-4 rounded-2xl text-center text-lg font-black">Começar Agora</Link>
           </div>
         )}
       </nav>
 
-      {/* ── Hero Section ── */}
-      <section className="relative pt-48 pb-32 overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full">
-           <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-brand/20 rounded-full blur-[120px] animate-pulse" />
-           <div className="absolute top-40 right-0 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px] animate-pulse delay-1000" />
+      {/* ── Hero Experience ── */}
+      <section className="relative pt-52 pb-40 overflow-hidden">
+        {/* Background Atmosphere */}
+        <div className="absolute top-0 inset-x-0 h-screen pointer-events-none overflow-hidden">
+           <div className="absolute -top-[10%] left-[10%] w-[60%] h-[60%] bg-[var(--brand-muted)] rounded-full blur-[120px] opacity-40 animate-pulse" />
+           <div className="absolute top-[20%] -right-[5%] w-[40%] h-[40%] bg-[var(--accent-muted)] rounded-full blur-[100px] opacity-30 animate-pulse delay-700" />
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 relative z-10 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 mb-10 animate-fade-in hover:bg-white/10 transition-colors cursor-default">
-             <span className="flex h-2 w-2 rounded-full bg-brand animate-ping" />
-             <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Revolucione sua Gestão Financeira</span>
-          </div>
-          
-          <h1 className="text-6xl md:text-[100px] font-black tracking-tighter mb-10 leading-[0.85] max-w-5xl mx-auto">
-             Assuma o Controle <br />do seu <span className="text-gradient">Destino Financeiro</span>.
-          </h1>
-          
-          <p className="text-lg md:text-2xl text-slate-400 max-w-3xl mx-auto mb-14 font-medium leading-relaxed">
-             A plataforma definitiva para quem busca liberdade. Gestão de gastos, investimentos e metas com inteligência artificial e visão compartilhada de verdade.
-          </p>
-          
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-24">
-            <Link href="/register" className="w-full sm:w-auto bg-brand text-white px-12 py-6 rounded-3xl text-lg font-black flex items-center justify-center gap-3 shadow-[0_20px_50px_rgba(var(--brand-rgb,51,102,255),0.3)] hover:scale-105 active:scale-95 transition-all">
-               Criar conta <ArrowRight size={22} strokeWidth={3} />
-            </Link>
-            <Link href="#features" className="w-full sm:w-auto bg-white/5 text-white border border-white/10 px-12 py-6 rounded-3xl text-lg font-black hover:bg-white/10 transition-all backdrop-blur-sm">
-               Como funciona
-            </Link>
-          </div>
+        <div className="max-w-7xl mx-auto px-6 relative z-10">
+          <div className="flex flex-col items-center text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 dark:bg-black/40 border border-white/20 backdrop-blur-md mb-8 shadow-xl shadow-black/[0.02]">
+               <Sparkles size={14} className="text-[var(--brand)]" />
+               <span className="text-[11px] font-black uppercase tracking-[0.2em] opacity-60">Harmonize suas finanças</span>
+            </div>
+            
+            <h1 className="text-6xl md:text-[120px] font-black tracking-tighter mb-10 leading-[0.85] max-w-5xl">
+               Sinta a paz de ter <br />o <span className="text-[var(--brand)] italic">controle total.</span>
+            </h1>
+            
+            <p className="text-xl md:text-3xl text-[var(--text-secondary)] max-w-3xl mx-auto mb-16 font-medium leading-relaxed">
+               O ZenCash não é apenas um app financeiro. É o seu santuário para organizar gastos, 
+               investimentos e sonhos com clareza absoluta.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-8 w-full max-w-xl mx-auto mb-32">
+              <Link href="/register" className="w-full sm:w-auto bg-[var(--brand)] text-[var(--brand-text)] px-14 py-6 rounded-3xl text-xl font-black flex items-center justify-center gap-4 shadow-2xl shadow-[var(--brand)]/20 hover:scale-[1.03] active:scale-[0.98] transition-all">
+                 Criar Conta <ArrowRight size={22} strokeWidth={3} />
+              </Link>
+              <Link href="#features" className="w-full sm:w-auto bg-white/50 dark:bg-black/20 text-[var(--text-primary)] border border-[var(--border-subtle)] px-14 py-6 rounded-3xl text-xl font-black hover:bg-white transition-all backdrop-blur-xl group">
+                 Ver Recursos <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
+              </Link>
+            </div>
 
-          <div className="relative group max-w-6xl mx-auto animate-in">
-             <div className="absolute -inset-1 bg-gradient-to-r from-brand to-purple-500 rounded-[42px] blur-2xl opacity-20 group-hover:opacity-40 transition-all duration-700" />
-             <div className="relative bg-[#131416] rounded-[40px] border border-white/10 p-3 overflow-hidden shadow-2xl shadow-black/80">
-                <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-                <Image src="/hero-landing.png" width={1400} height={900} alt="Dashboard Preview" className="rounded-[30px] w-full h-auto object-cover opacity-90 group-hover:opacity-100 transition-opacity" priority />
-             </div>
+            {/* Immersive Preview */}
+            <div className="relative w-full max-w-6xl animate-in fade-in zoom-in duration-1000">
+               <div className="absolute -inset-4 bg-gradient-to-b from-[var(--brand)] to-[var(--accent)] opacity-10 rounded-[58px] blur-3xl pointer-events-none" />
+               <div className="relative bg-white/40 dark:bg-black/40 p-4 rounded-[54px] border border-white/20 dark:border-white/5 shadow-2xl overflow-hidden backdrop-blur-3xl group">
+                  <div className="relative overflow-hidden rounded-[40px] shadow-2xl border border-white/5">
+                    <Image 
+                      src="/hero-landing.png" 
+                      width={1400} 
+                      height={900} 
+                      alt="ZenCash Dashboard Preview" 
+                      className="w-full h-auto object-cover opacity-95 group-hover:opacity-100 transition-opacity duration-1000 transition-transform duration-[2000ms] group-hover:scale-[1.02]" 
+                      priority 
+                    />
+                    <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[var(--bg-base)] via-transparent to-transparent pointer-events-none" />
+                  </div>
+               </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── Features ── */}
-      <section id="features" className="py-40 relative bg-[#0a0a0b]">
+      {/* ── Bento Grid Features ── */}
+      <section id="features" className="py-52 relative">
          <div className="max-w-7xl mx-auto px-6">
-            <div className="text-center mb-24 space-y-4">
-                <h2 className="text-4xl md:text-6xl font-black tracking-tighter">Tudo o que você precisa <br /><span className="opacity-40">em um só lugar.</span></h2>
+            <div className="max-w-3xl mb-32 text-center md:text-left">
+                <h2 className="text-5xl md:text-8xl font-black tracking-tighter leading-none mb-10">
+                   Criado para quem <br />valoriza <span className="opacity-30">o essencial.</span>
+                </h2>
+                <p className="text-2xl text-[var(--text-secondary)] font-medium">Design focado em reduzir o ruído mental e amplificar seus resultados.</p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-16">
-               <FeatureCard 
-                 icon={<Users size={28} />} 
-                 title="Visão Casal" 
-                 color="brand"
-                 desc="Compartilhe finanças com seu parceiro sem perder a individualidade. O primeiro aplicativo que entende que casais têm planos em comum e contas separadas." 
-               />
-               <FeatureCard 
-                 icon={<BarChart3 size={28} />} 
-                 title="Patrimônio Total" 
-                 color="purple-500"
-                 desc="Visualize seu patrimônio líquido e fluxo de caixa instantaneamente. Dashboards dinâmicos que consolidam contas, cartões e investimentos em tempo real." 
-               />
-               <FeatureCard 
-                 icon={<Zap size={28} />} 
-                 title="IA Preditiva" 
-                 color="amber-500"
-                 desc="Nosso algoritmo de IA analisa seus padrões de consumo e sugere orçamentos inteligentes para você economizar sem sofrer e alcançar suas metas 2x mais rápido." 
-               />
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 auto-rows-[400px]">
+               {/* Big Card 1 */}
+               <div className="md:col-span-8 group relative overflow-hidden bg-white/80 dark:bg-black/20 rounded-[48px] border border-[var(--border-subtle)] transition-all hover:shadow-2xl shadow-black/[0.02] p-12 flex flex-col justify-end">
+                  <div className="absolute top-12 right-12 text-[var(--brand)] opacity-5 group-hover:opacity-10 transition-opacity rotate-12 scale-[4]">
+                     <BarChart3 size={100} />
+                  </div>
+                  <div className="relative z-10 max-w-md">
+                     <h3 className="text-4xl font-black mb-6">Controle Compartilhado</h3>
+                     <p className="text-xl text-[var(--text-secondary)] font-medium">Sincronize suas finanças com parceiros ou sócios de forma inteligente. Contas conjuntas, visão individual e metas em comum.</p>
+                  </div>
+               </div>
+
+               {/* Tall Card 1 */}
+               <div className="md:col-span-4 bg-[var(--brand)] text-[var(--brand-text)] rounded-[48px] p-12 flex flex-col gap-8 shadow-2xl shadow-[var(--brand)]/20">
+                  <div className="w-16 h-16 rounded-3xl bg-white/20 flex items-center justify-center backdrop-blur-md">
+                     <Zap size={32} />
+                  </div>
+                  <h3 className="text-3xl font-black leading-tight">Insights instantâneos com IA.</h3>
+                  <p className="text-lg opacity-80 font-medium">Nossa inteligência financeira analisa seus hábitos e sugere cortes e investimentos em tempo real.</p>
+                  <div className="mt-auto pt-8 border-t border-white/20 text-xs font-black uppercase tracking-widest opacity-60">Disponível nos planos Pro e Premium</div>
+               </div>
+
+               {/* Tall Card 2 */}
+               <div className="md:col-span-4 bg-white/80 dark:bg-black/20 rounded-[48px] border border-[var(--border-subtle)] p-12 flex flex-col justify-between group transition-all hover:bg-white dark:hover:bg-black/40">
+                  <div className="space-y-6">
+                     <div className="w-14 h-14 rounded-2xl bg-[var(--accent-muted)] flex items-center justify-center text-[var(--accent)]">
+                        <ShieldCheck size={28} />
+                     </div>
+                     <h3 className="text-3xl font-black">Segurança <br />Misteriosa.</h3>
+                  </div>
+                  <p className="text-[var(--text-secondary)] font-medium text-lg leading-relaxed">Criptografia de nível militar garante que apenas você veja seus dados.</p>
+               </div>
+
+               {/* Big Card 2 */}
+               <div className="md:col-span-8 bg-white dark:bg-black/60 rounded-[48px] border border-[var(--border-subtle)] p-12 relative overflow-hidden group shadow-xl">
+                  <div className="flex flex-col h-full">
+                     <div className="flex gap-4 mb-auto">
+                        <div className="px-5 py-2 rounded-full bg-[var(--bg-base)] text-xs font-black uppercase tracking-widest border border-[var(--border-subtle)]">Metas Ativas</div>
+                        <div className="px-5 py-2 rounded-full bg-[var(--brand-muted)] text-[var(--brand)] text-xs font-black uppercase tracking-widest">+12% no mês</div>
+                     </div>
+                     <div className="max-w-lg">
+                        <h3 className="text-4xl font-black mb-6 italic">Acompanhe cada centavo.</h3>
+                        <p className="text-xl text-[var(--text-secondary)] font-medium">Categorização automática de gastos e visão de fluxo de caixa em tempo real. Saiba exatamente para onde seu dinheiro está indo.</p>
+                     </div>
+                  </div>
+                  <div className="absolute right-[-10%] bottom-[-20%] w-[60%] opacity-5 group-hover:rotate-6 transition-transform duration-1000">
+                     <TrendingUp size={400} />
+                  </div>
+               </div>
             </div>
          </div>
       </section>
 
-      {/* ── Pricing Section (DIRECTLY HERE) ── */}
-      <section id="pricing" className="py-40 bg-white/[0.02] border-y border-white/5 relative overflow-hidden">
-        <div className="absolute top-1/2 left-0 w-[600px] h-[600px] bg-brand/5 rounded-full blur-[150px] -translate-x-1/2" />
-        
+      {/* ── Jewelry Pricing ── */}
+      <section id="pricing" className="py-60 bg-[var(--bg-elevated)] relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 relative z-10">
-            <div className="text-center mb-20 space-y-4">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand/10 border border-brand/20 mb-2">
-                    <Star size={12} className="text-brand" fill="currentColor" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-brand">Planos para todos</span>
+            <div className="text-center mb-32 space-y-6">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--brand)]/10 border border-[var(--brand)]/20 mb-2">
+                    <Star size={12} className="text-[var(--brand)]" fill="currentColor" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[var(--brand)]">Escolha seu caminho</span>
                 </div>
-                <h2 className="text-4xl md:text-6xl font-black tracking-tighter">Escolha seu <span className="text-gradient">Nível de Controle</span></h2>
-                <p className="text-slate-400 font-medium max-w-2xl mx-auto">Invista na sua liberdade financeira com inteligência. Sem pegadinhas.</p>
+                <h2 className="text-6xl md:text-9xl font-black tracking-tighter leading-none">Planos sob medida.</h2>
+                <p className="text-2xl text-[var(--text-secondary)] font-medium max-w-2xl mx-auto">Invista na sua paz de espírito financiera.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-10 relative items-stretch pt-12">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
                 {loadingPlans ? (
-                    [1,2,3].map(i => <div key={i} className="h-[550px] rounded-[40px] bg-white/5 animate-pulse" />)
+                    [1,2,3].map(i => <div key={i} className="h-[650px] rounded-[48px] bg-white/40 animate-pulse border border-white/20" />)
                 ) : (
                     plans.map((plan) => {
-                        const isCurrent = currentPlan !== null && plan.id === currentPlan;
+                        const isCurrent = currentPlan !== null && (plan.id === currentPlan || (plan.id === 'free' && currentPlan === 'pensionista'));
                         return (
-                        <div key={plan.id} className={`group relative p-10 rounded-[40px] border transition-all duration-500 hover:-translate-y-2 flex flex-col ${plan.id === 'pro' ? 'bg-white text-black border-white scale-105 z-20 shadow-2xl shadow-white/20' : 'bg-[#121214] border-white/5 hover:border-white/10 shadow-xl'}`}>
-                            {plan.id === 'pro' && <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-[11px] font-black uppercase tracking-widest px-8 py-3 rounded-full shadow-2xl shadow-emerald-500/40 z-30">Mais Popular</div>}
+                        <div key={plan.id} className={`group relative p-12 rounded-[48px] border transition-all duration-700 hover:-translate-y-4 flex flex-col ${plan.id === 'pro' ? 'bg-[var(--brand)] text-[var(--brand-text)] border-transparent scale-[1.05] z-20 shadow-2xl shadow-[var(--brand)]/20' : 'bg-white/60 dark:bg-black/60 border-[var(--border-subtle)] hover:bg-white dark:hover:bg-black/95 shadow-xl shadow-black/[0.02]'}`}>
+                            {plan.id === 'pro' && <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-[var(--accent)] text-[var(--brand-text)] text-[11px] font-black uppercase tracking-widest px-10 py-4 rounded-full shadow-2xl z-30">Caminho da Paz</div>}
+                            {plan.id === 'premium' && <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest px-10 py-4 rounded-full shadow-2xl z-30">Elite</div>}
                             
-                            <div className="mb-10">
-                                <h3 className={`text-xl font-black mb-6 ${plan.id === 'pro' ? 'text-black' : 'text-white'}`}>{plan.name}</h3>
+                            <div className="mb-14">
+                                <h3 className={`text-2xl font-black mb-10 ${plan.id === 'pro' ? 'text-[var(--brand-text)]' : 'text-[var(--brand)]'}`}>{plan.name}</h3>
                                 <div className="flex items-baseline gap-1">
-                                    <span className="text-5xl font-black tracking-tighter">R$ {Math.floor(plan.price)}</span>
+                                    <span className="text-7xl font-black tracking-tighter">R$ {Math.floor(plan.price)}</span>
                                     <div className="flex flex-col">
-                                        <span className="text-2xl font-bold opacity-40 leading-none">
-                                            ,{plan.price % 1 !== 0 ? String(Math.round((plan.price % 1) * 100)).padStart(2, '0') : '00'}
+                                        <span className="text-3xl font-bold opacity-30 leading-none">
+                                            ,{plan.price % 1 !== 0 ? String(Math.round((plan.price % 1) * 100)).padStart(2, '0') : '90'}
                                         </span>
-                                        <span className="text-[10px] font-black uppercase opacity-20 tracking-tighter mt-1">/mês</span>
+                                        <span className="text-[11px] font-black uppercase opacity-20 tracking-tighter mt-2">/mês</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="space-y-6 mb-12 flex-1">
-                                <PlanFeature label="Metas de economia" value={plan.features.max_goals === -1 ? '∞' : plan.features.max_goals} enabled={true} dark={plan.id !== 'pro'} />
-                                <PlanFeature label="Ativos em Carteira" value={plan.features.max_investments === -1 ? '∞' : plan.features.max_investments} enabled={true} dark={plan.id !== 'pro'} />
-                                <PlanFeature label="Relatórios Avançados" enabled={plan.features.export_enabled} dark={plan.id !== 'pro'} />
-                                <PlanFeature label="Analista de IA" enabled={plan.features.ai_chat_enabled} dark={plan.id !== 'pro'} />
-                                <PlanFeature label="Sincronização Casal" enabled={plan.features.shared_account_enabled} dark={plan.id !== 'pro'} />
+                            <div className="space-y-8 mb-16 flex-1">
+                                <JewelryFeature label="Controle de Metas" value={plan.features.max_goals === -1 ? 'Ilimitado' : `${plan.features.max_goals} metas`} enabled={true} dark={plan.id !== 'pro'} />
+                                <JewelryFeature label="Gestão de Ativos" value={plan.features.max_investments === -1 ? 'Ilimitado' : `${plan.features.max_investments} ativos`} enabled={true} dark={plan.id !== 'pro'} />
+                                <JewelryFeature label="Relatórios Avançados" enabled={plan.features.export_enabled} dark={plan.id !== 'pro'} />
+                                <JewelryFeature label="Análise com IA" enabled={plan.features.ai_chat_enabled} dark={plan.id !== 'pro'} />
+                                <JewelryFeature label="Conexão Casal" enabled={plan.features.shared_account_enabled} dark={plan.id !== 'pro'} />
+                                <JewelryFeature label="Suporte Exclusivo" enabled={plan.id !== 'trial'} dark={plan.id !== 'basico'} />
                             </div>
 
                             {isCurrent ? (
-                                <div className={`w-full py-5 rounded-2xl text-center text-xs font-black uppercase tracking-widest border ${plan.id === 'pro' ? 'bg-black/5 text-black border-black/10' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}>
-                                    ✓ Você está aqui
+                                <div className={`w-full py-6 rounded-3xl text-center text-xs font-black uppercase tracking-widest border transition-all shadow-lg ${plan.id === 'pro' ? 'bg-white/10 text-white border-white/20' : 'bg-[var(--brand)]/10 text-[var(--brand)] border-[var(--brand)]/20'}`}>
+                                    ✓ Plano Ativo
                                 </div>
                             ) : (
-                                <Link href="/pricing" className={`w-full py-5 rounded-2xl text-center text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-xl ${plan.id === 'pro' ? 'bg-black text-white hover:bg-zinc-800 shadow-black/10' : 'bg-white text-black hover:bg-brand hover:text-white'}`}>
-                                    Ativar Agora
-                                </Link>
+                                <button 
+                                    onClick={() => handleCheckout(plan.id)}
+                                    disabled={checkoutLoading === plan.id}
+                                    className={`w-full py-6 rounded-3xl text-center text-sm font-black uppercase tracking-widest transition-all active:scale-[0.98] shadow-2xl flex items-center justify-center gap-3 ${plan.id === 'pro' ? 'bg-white text-[var(--brand)] hover:bg-[#f0f0f0] shadow-white/10' : 'bg-[var(--brand)] text-[var(--brand-text)] hover:shadow-[0_10px_40px_-10px_var(--brand)]'}`}>
+                                    {checkoutLoading === plan.id ? <Loader2 size={18} className="animate-spin" /> : <>Assinar Agora <ArrowRight size={18} /></>}
+                                </button>
                             )}
                         </div>
                         );
@@ -204,86 +313,79 @@ export default function LandingPage() {
                 )}
             </div>
             
-            <div className="mt-16 text-center">
-                <Link href="/pricing" className="text-xs font-black uppercase tracking-widest opacity-40 hover:opacity-100 flex items-center justify-center gap-2 transition-all">
-                    Ver comparação completa de recursos <ArrowRight size={14} />
-                </Link>
+            <div className="mt-32 pt-20 border-t border-[var(--border-subtle)] flex flex-col md:flex-row items-center justify-between gap-12 group text-center md:text-left">
+                <div className="flex flex-col gap-2">
+                   <p className="text-lg font-bold opacity-60">Dúvidas sobre os planos?</p>
+                   <Link href="/suporte" className="text-2xl font-black border-b-2 border-transparent hover:border-[var(--brand)] transition-all">Consulte nosso suporte especializado</Link>
+                </div>
+                <div className="w-20 h-20 rounded-full border border-[var(--border-subtle)] flex items-center justify-center animate-bounce">
+                   <HelpCircle size={32} className="opacity-20" />
+                </div>
             </div>
         </div>
       </section>
 
       {/* ── Social Proof ── */}
-      <section className="py-40 relative">
-         <div className="max-w-4xl mx-auto px-6 text-center space-y-12">
-            <div className="flex justify-center gap-2">
-               {[1,2,3,4,5].map(i => <Star key={i} size={24} className="fill-brand text-brand" />)}
+      <section className="py-60 relative flex flex-col items-center">
+         <div className="max-w-5xl mx-auto px-6 text-center space-y-16">
+            <div className="flex justify-center gap-1.5">
+               {[1,2,3,4,5].map(i => <Star key={i} size={32} className="fill-[var(--brand)] text-[var(--brand)]" />)}
             </div>
-            <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-[1.1]">
-               "O FinControl mudou nossa forma de lidar com o dinheiro como casal. Finalmente temos clareza sem brigas."
+            <h2 className="text-4xl md:text-8xl font-black tracking-tight leading-[0.9]">
+               "O ZenCash é a evolução do controle financeiro. <span className="opacity-30 italic">Minimalismo e poder</span> em perfeita harmonia."
             </h2>
-            <div className="flex flex-col items-center gap-4">
-               <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-brand to-purple-500 p-0.5">
-                    <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center text-xl font-black">G</div>
+            <div className="flex flex-col items-center gap-6">
+               <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-[var(--brand)] to-[var(--accent)] p-1 group">
+                    <div className="w-full h-full rounded-full bg-[var(--bg-base)] flex items-center justify-center text-4xl font-black text-[var(--brand)] group-hover:bg-white transition-colors uppercase">G</div>
                </div>
-               <div>
-                  <p className="text-xl font-black">Guilherme Santo</p>
-                  <p className="text-xs font-black uppercase tracking-widest text-brand">Usuário Premium ha 1 ano</p>
+               <div className="space-y-1">
+                  <p className="text-3xl font-black">Guilherme Santos</p>
+                  <p className="text-xs font-black uppercase tracking-[0.3em] text-[var(--brand)]">Usuário Premium ha 1 ano</p>
                </div>
             </div>
          </div>
       </section>
 
-      {/* ── Guaranteed Quality ── */}
-      <section className="py-20 border-y border-white/5 bg-black/20">
-        <div className="max-w-7xl mx-auto px-6">
-            <div className="flex flex-wrap justify-between items-center gap-12">
-                <Guaranty icon={<ShieldCheck className="text-brand" />} text="Criptografia de ponta a ponta" />
-                <Guaranty icon={<Lock className="text-brand" />} text="Privacidade 100% garantida" />
-                <Guaranty icon={<Globe className="text-brand" />} text="Acesso em qualquer dispositivo" />
-                <Guaranty icon={<HeartHandshake className="text-brand" />} text="Suporte humano 24/7" />
-            </div>
-        </div>
-      </section>
-
-      {/* ── CTA Final ── */}
-      <section className="py-52 text-center relative overflow-hidden">
-         <div className="absolute inset-0 bg-brand/10 blur-[150px] rounded-full scale-150" />
-         <div className="relative z-10 space-y-10">
-            <h2 className="text-6xl md:text-[120px] font-black tracking-tighter leading-none">Sua liberdade <br /><span className="text-gradient">começa aqui.</span></h2>
-            <p className="text-xl md:text-2xl text-slate-400 max-w-2xl mx-auto font-medium">Junte-se a quem já assumiu o controle total das próprias finanças.</p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-10">
-               <Link href="/register" className="w-full sm:w-auto bg-white text-black px-12 py-6 rounded-3xl text-xl font-black hover:bg-brand hover:text-white transition-all shadow-2xl shadow-white/5 active:scale-95 leading-none">Começar Gratuitamente</Link>
+      {/* ── Final CTA ── */}
+      <section className="py-72 text-center relative overflow-hidden bg-[var(--brand)] text-[var(--brand-text)] mx-6 my-12 rounded-[80px]">
+         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.1),transparent)]" />
+         <div className="relative z-10 space-y-12">
+            <h2 className="text-7xl md:text-[160px] font-black tracking-tighter leading-none mb-4 animate-in px-4">A calma financeira <br />mudar tudo.</h2>
+            <p className="text-2xl md:text-4xl max-w-3xl mx-auto font-medium opacity-80 leading-relaxed mb-10 px-4">Junte-se à comunidade que cultiva paz e prosperidade todos os dias.</p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-8 pt-10 px-6">
+               <Link href="/register" className="w-full sm:w-auto bg-white text-[var(--brand)] px-20 py-8 rounded-[40px] text-2xl font-black hover:scale-[1.05] active:scale-[0.98] transition-all shadow-[0_20px_80px_-15px_rgba(255,255,255,0.4)]">Abra seu Santuário Agora</Link>
             </div>
          </div>
       </section>
 
       {/* ── Footer ── */}
-      <footer className="py-20 border-t border-white/5 bg-black">
+      <footer className="pt-40 pb-20 bg-[var(--bg-base)]">
          <div className="max-w-7xl mx-auto px-6">
-            <div className="flex flex-col md:flex-row justify-between items-start gap-12 mb-20">
-               <div className="space-y-6 max-w-sm">
-                  <div className="flex items-center gap-3">
-                     <div className="w-10 h-10 rounded-xl bg-brand flex items-center justify-center"><Zap size={20} className="text-white" /></div>
-                     <span className="text-2xl font-black tracking-tighter">FinControl</span>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-20 mb-32">
+               <div className="md:col-span-5 space-y-10">
+                  <div className="flex items-center gap-4">
+                     <div className="w-14 h-14 rounded-2xl bg-[var(--brand)] flex items-center justify-center shadow-2xl shadow-[var(--brand)]/10"><Leaf size={28} className="text-white" /></div>
+                     <span className="text-4xl font-black tracking-tighter italic">ZenCash</span>
                   </div>
-                  <p className="text-sm text-slate-500 font-medium leading-relaxed">
-                     A plataforma definitiva para organizar sua vida financeira, investir com inteligência e realizar seus maiores sonhos.
+                  <p className="text-xl text-[var(--text-secondary)] font-medium leading-relaxed">
+                     Cultivando sanidade financeira em um mundo ruidoso. Do básico ao premium, 
+                     sua jornada para a liberdade começa aqui.
                   </p>
                </div>
                
-               <div className="grid grid-cols-2 sm:grid-cols-3 gap-16">
-                  <FooterCol title="Produto" links={['Recursos', 'Preços', 'Segurança', 'IA']} />
-                  <FooterCol title="Empresa" links={['Sobre', 'Blog', 'Carreiras', 'Contato']} />
-                  <FooterCol title="Legal" links={['Privacidade', 'Termos', 'Cookies']} />
+               <div className="md:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-16">
+                  <FooterCol title="Portal" links={['Início', 'Recursos', 'Planos', 'Blog']} />
+                  <FooterCol title="Suporte" links={['Central de Ajuda', 'Comunidade', 'Termos', 'Privacidade']} />
+                  <FooterCol title="Zen" links={['Meditação Financeira', 'Workshop IA', 'Guia do Casal']} />
                </div>
             </div>
             
-            <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
-               <p className="text-xs text-slate-500 font-bold uppercase tracking-[0.2em]">© 2026 FinControl Inc. Made with ❤️ for explorers.</p>
-               <div className="flex gap-8">
-                  <div className="w-5 h-5 bg-white/10 rounded-full" />
-                  <div className="w-5 h-5 bg-white/10 rounded-full" />
-                  <div className="w-5 h-5 bg-white/10 rounded-full" />
+            <div className="pt-16 border-t border-[var(--border-subtle)] flex flex-col md:flex-row justify-between items-center gap-10">
+               <p className="text-[10px] text-[var(--text-muted)] font-black uppercase tracking-[0.4em]">© 2026 ZEN CASH INC. HARMONY IS THE NEW WEALTH.</p>
+               <div className="flex gap-10 items-center">
+                  <Globe size={18} className="opacity-20 hover:opacity-100 transition-opacity" />
+                  <Smartphone size={18} className="opacity-20 hover:opacity-100 transition-opacity" />
+                  <Lock size={18} className="opacity-20 hover:opacity-100 transition-opacity" />
                </div>
             </div>
          </div>
@@ -292,52 +394,35 @@ export default function LandingPage() {
   );
 }
 
-function FeatureCard({ icon, title, desc, color }: { icon: any, title: string, desc: string, color: string }) {
-    return (
-        <div className="space-y-8 group p-8 rounded-[32px] hover:bg-white/[0.03] transition-all duration-500 border border-transparent hover:border-white/5">
-            <div className={`w-16 h-16 rounded-[24px] bg-white text-black flex items-center justify-center group-hover:scale-110 transition-all duration-500 shadow-xl shadow-white/5`}>
-                {icon}
-            </div>
-            <div className="space-y-4">
-                <h3 className="text-3xl font-black">{title}</h3>
-                <p className="text-slate-400 font-medium leading-relaxed text-lg">
-                    {desc}
-                </p>
-            </div>
-        </div>
-    );
+function NavLink({ href, children }: { href: string, children: React.ReactNode }) {
+  return (
+    <Link href={href} className="px-5 py-2 text-sm font-black uppercase tracking-widest opacity-40 hover:opacity-100 hover:scale-105 transition-all text-[var(--text-primary)]">
+      {children}
+    </Link>
+  );
 }
 
-function PlanFeature({ label, value, enabled, dark }: { label: string, value?: any, enabled: boolean, dark: boolean }) {
+function JewelryFeature({ label, value, enabled, dark }: { label: string, value?: any, enabled: boolean, dark: boolean }) {
     return (
-        <div className={`flex items-center justify-between ${enabled ? '' : 'opacity-20 grayscale'}`}>
-            <div className="flex items-center gap-3">
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center ${dark ? 'bg-white/10 text-white' : 'bg-black/10 text-black'}`}>
+        <div className={`flex items-center justify-between ${enabled ? '' : 'opacity-10 grayscale select-none'}`}>
+            <div className="flex items-center gap-5">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 ${dark ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-white/40 text-white'}`}>
                     {enabled ? <Check size={12} strokeWidth={4} /> : <X size={12} strokeWidth={4} />}
                 </div>
-                <span className={`text-[13px] font-bold ${dark ? 'text-slate-300' : 'text-zinc-700'}`}>{label}</span>
+                <span className={`text-[15px] font-bold ${dark ? 'text-[var(--text-secondary)]' : 'text-white/80'}`}>{label}</span>
             </div>
-            {enabled && value && <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${dark ? 'bg-white/10' : 'bg-black/5'}`}>{value}</span>}
-        </div>
-    )
-}
-
-function Guaranty({ icon, text }: { icon: any, text: string }) {
-    return (
-        <div className="flex items-center gap-3">
-            <div className="w-6 h-6">{icon}</div>
-            <span className="text-xs font-black uppercase tracking-widest opacity-80">{text}</span>
+            {enabled && value && <span className={`text-[10px] font-black px-3 py-1 rounded-full ${dark ? 'bg-[var(--brand)]/10 text-[var(--brand)]' : 'bg-white/20 text-white'}`}>{value}</span>}
         </div>
     )
 }
 
 function FooterCol({ title, links }: { title: string, links: string[] }) {
     return (
-        <div className="space-y-6">
-            <h4 className="text-xs font-black uppercase tracking-[0.2em]">{title}</h4>
-            <ul className="space-y-4">
+        <div className="space-y-8">
+            <h4 className="text-xs font-black uppercase tracking-[0.3em] opacity-40">{title}</h4>
+            <ul className="space-y-5">
                 {links.map(link => (
-                    <li key={link}><Link href="#" className="text-sm font-medium text-slate-500 hover:text-white transition-colors">{link}</Link></li>
+                    <li key={link}><Link href="#" className="text-[15px] font-bold text-[var(--text-secondary)] hover:text-[var(--brand)] transition-colors">{link}</Link></li>
                 ))}
             </ul>
         </div>

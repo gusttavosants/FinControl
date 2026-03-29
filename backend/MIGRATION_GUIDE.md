@@ -26,13 +26,13 @@ sudo systemctl start postgresql
 ### 1.2. Criar banco de dados
 
 ```bash
-psql -U postgres -c "CREATE DATABASE fincontrol;"
+psql -U postgres -c "CREATE DATABASE zencash;"
 ```
 
 Ou via pgAdmin:
 1. Clique direito em "Databases"
 2. Create > Database
-3. Nome: `fincontrol`
+3. Nome: `zencash`
 4. Clique "Save"
 
 ### 1.3. Configurar variaveis de ambiente
@@ -40,7 +40,7 @@ Ou via pgAdmin:
 Crie um arquivo `.env` na pasta `backend/`:
 
 ```
-DATABASE_URL=postgresql://postgres:sua_senha@localhost:5432/fincontrol
+DATABASE_URL=postgresql://postgres:sua_senha@localhost:5432/zencash
 SECRET_KEY=sua-chave-secreta-super-segura-aqui
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_DAYS=30
@@ -108,9 +108,9 @@ Escolha uma das opcoes abaixo:
 
 1. Crie conta em https://render.com
 2. Clique "New +" > "Web Service"
-3. Conecte seu repositorio GitHub (FinControl)
+3. Conecte seu repositorio GitHub (ZenCash)
 4. Configure:
-   - Name: `fincontrol-api`
+   - Name: `zencash-api`
    - Environment: `Python 3.10`
    - Build Command: `pip install -r backend/requirements.txt`
    - Start Command: `cd backend && uvicorn main:app --host 0.0.0.0 --port 8000`
@@ -120,7 +120,7 @@ Escolha uma das opcoes abaixo:
    - `SECRET_KEY`: Gere uma chave aleatoria
 7. Redeploy
 
-**Resultado:** Seu backend estara em `https://fincontrol-api.onrender.com`
+**Resultado:** Seu backend estara em `https://zencash-api.onrender.com`
 
 ### Opcao B: Railway
 
@@ -133,7 +133,7 @@ Escolha uma das opcoes abaixo:
 
 1. Crie conta em https://railway.app
 2. Clique "New Project" > "Deploy from GitHub"
-3. Selecione o repositorio `FinControl`
+3. Selecione o repositorio `ZenCash`
 4. Railway detectara automaticamente e criara servicos
 5. Adicione variavel de ambiente `SECRET_KEY`
 6. Deploy automatico
@@ -184,7 +184,7 @@ async rewrites() {
     beforeFiles: [
       {
         source: '/api/:path*',
-        destination: 'https://fincontrol-api.onrender.com/api/:path*',
+        destination: 'https://zencash-api.onrender.com/api/:path*',
       },
     ],
   };
@@ -224,11 +224,11 @@ async rewrites() {
 ### Erro: "could not connect to server"
 - Verifique se PostgreSQL esta rodando
 - Confirme a senha no `.env`
-- Teste com: `psql -U postgres -d fincontrol`
+- Teste com: `psql -U postgres -d zencash`
 
 ### Erro: "relation does not exist"
 - Execute novamente: `python migrate_to_postgres.py`
-- Ou delete o banco e recrie: `psql -U postgres -c "DROP DATABASE fincontrol; CREATE DATABASE fincontrol;"`
+- Ou delete o banco e recrie: `psql -U postgres -c "DROP DATABASE zencash; CREATE DATABASE zencash;"`
 
 ### App mobile nao consegue conectar
 - Verifique se o backend esta acessivel (teste a URL no navegador)

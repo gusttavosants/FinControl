@@ -1,6 +1,5 @@
 import os
 import stripe
-import mercadopago
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
@@ -13,27 +12,27 @@ from core.config import settings
 
 # Initialize payment gateways
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-MERCADOPAGO_ACCESS_TOKEN = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
 
 class PaymentService:
     """Service for handling payments and subscriptions"""
     
-    # Plan pricing (in cents for Stripe, in BRL for MercadoPago)
+    # Plan pricing (in cents for Stripe)
     PLAN_PRICES = {
-        "free": {
-            "amount": 999,  # R$ 9.99 (Basico)
-            "stripe_price_id": os.getenv("STRIPE_FREE_PRICE_ID"),
-            "mercadopago_plan_id": os.getenv("MERCADOPAGO_FREE_PLAN_ID"),
+        "trial": {
+            "amount": 0,
+            "stripe_price_id": None,
+        },
+        "basico": {
+            "amount": 990,  # R$ 9.90
+            "stripe_price_id": os.getenv("STRIPE_BASICO_PRICE_ID"),
         },
         "pro": {
-            "amount": 1999,  # R$ 19.99
+            "amount": 1990,  # R$ 19.90
             "stripe_price_id": os.getenv("STRIPE_PRO_PRICE_ID"),
-            "mercadopago_plan_id": os.getenv("MERCADOPAGO_PRO_PLAN_ID"),
         },
         "premium": {
             "amount": 3999,  # R$ 39.99
             "stripe_price_id": os.getenv("STRIPE_PREMIUM_PRICE_ID"),
-            "mercadopago_plan_id": os.getenv("MERCADOPAGO_PREMIUM_PLAN_ID"),
         }
     }
     
@@ -44,7 +43,7 @@ class PaymentService:
         db: Session
     ) -> Dict[str, Any]:
         """Create Stripe checkout session for subscription"""
-        if plan not in ["pro", "premium"]:
+        if plan not in ["basico", "pro", "premium"]:
             raise HTTPException(status_code=400, detail="Invalid plan")
         
         try:
@@ -106,59 +105,6 @@ class PaymentService:
             logger.error("Stripe error", error=str(e), user_id=user.id)
             raise HTTPException(status_code=500, detail=f"Payment error: {str(e)}")
     
-    @staticmethod
-    def create_mercadopago_preference(
-        user: User,
-        plan: str,
-        db: Session
-    ) -> Dict[str, Any]:
-        """Create MercadoPago payment preference"""
-        if plan not in ["pro", "premium"]:
-            raise HTTPException(status_code=400, detail="Invalid plan")
-        
-        try:
-            sdk = mercadopago.SDK(MERCADOPAGO_ACCESS_TOKEN)
-            
-            plan_data = PaymentService.PLAN_PRICES[plan]
-            
-            preference_data = {
-                "items": [{
-                    "title": f"FinControl - Plano {plan.capitalize()}",
-                    "quantity": 1,
-                    "unit_price": plan_data["amount"] / 100,  # Convert cents to BRL
-                    "currency_id": "BRL",
-                }],
-                "payer": {
-                    "name": user.nome,
-                    "email": user.email,
-                },
-                "back_urls": {
-                    "success": f"{os.getenv('FRONTEND_URL')}/checkout/success",
-                    "failure": f"{os.getenv('FRONTEND_URL')}/checkout/failure",
-                    "pending": f"{os.getenv('FRONTEND_URL')}/checkout/pending",
-                },
-                "auto_return": "approved",
-                "metadata": {
-                    "user_id": user.id,
-                    "plan": plan,
-                },
-                "notification_url": f"{os.getenv('BACKEND_URL')}/api/webhooks/mercadopago",
-            }
-            
-            preference_response = sdk.preference().create(preference_data)
-            preference = preference_response["response"]
-            
-            logger.info("MercadoPago preference created",
-                       user_id=user.id, plan=plan, preference_id=preference["id"])
-            
-            return {
-                "init_point": preference["init_point"],
-                "preference_id": preference["id"],
-            }
-            
-        except Exception as e:
-            logger.error("MercadoPago error", error=str(e), user_id=user.id)
-            raise HTTPException(status_code=500, detail=f"Payment error: {str(e)}")
     
     @staticmethod
     def handle_stripe_webhook(payload: bytes, sig_header: str, db: Session) -> Dict[str, Any]:
@@ -336,84 +282,43 @@ class PaymentService:
         
         return {"status": "success"}
     
-    @staticmethod
-    def handle_mercadopago_webhook(data: Dict, db: Session) -> Dict[str, Any]:
-        """Handle MercadoPago webhook events"""
-        # MP sends notifications for different topics
-        topic = data.get("type", data.get("topic"))
-        resource_id = data.get("data", {}).get("id", data.get("id"))
-        
-        if topic == "payment":
-            return PaymentService._handle_mercadopago_payment(resource_id, db)
-        
-        return {"status": "ignored"}
 
     @staticmethod
-    def _handle_mercadopago_payment(payment_id: str, db: Session) -> Dict[str, Any]:
-        """Handle MercadoPago payment update"""
-        try:
-            sdk = mercadopago.SDK(MERCADOPAGO_ACCESS_TOKEN)
-            payment_info_response = sdk.payment().get(payment_id)
-            payment_info = payment_info_response["response"]
-            
-            status = payment_info.get("status")
-            metadata = payment_info.get("metadata", {})
-            user_id = metadata.get("user_id")
-            plan = metadata.get("plan")
-            
-            if status == "approved" and user_id:
-                user_id = int(user_id)
-                
-                subscription = db.query(Subscription).filter(
-                    Subscription.user_id == user_id
-                ).first()
-                
-                if subscription:
-                    subscription.plan = plan
-                    subscription.status = "active"
-                    subscription.mercadopago_customer_id = str(payment_info.get("payer", {}).get("id"))
-                    subscription.current_period_start = datetime.utcnow()
-                    subscription.current_period_end = datetime.utcnow() + timedelta(days=30)
+    def create_stripe_portal_session(user: User, db: Session) -> Dict[str, Any]:
+        """Create Stripe customer portal session for subscription management"""
+        subscription = db.query(Subscription).filter(
+            Subscription.user_id == user.id
+        ).first()
+        
+        if not subscription or not subscription.stripe_customer_id:
+            # If no customer ID, we can't open the portal
+            # But maybe they are a legacy user, try to find by email
+            try:
+                customers = stripe.Customer.list(email=user.email, limit=1)
+                if customers.data:
+                    customer_id = customers.data[0].id
+                    if not subscription:
+                        subscription = Subscription(user_id=user.id, plan="trial", stripe_customer_id=customer_id)
+                        db.add(subscription)
+                    else:
+                        subscription.stripe_customer_id = customer_id
+                    db.commit()
                 else:
-                    subscription = Subscription(
-                        user_id=user_id,
-                        plan=plan,
-                        status="active",
-                        mercadopago_customer_id=str(payment_info.get("payer", {}).get("id")),
-                        current_period_start=datetime.utcnow(),
-                        current_period_end=datetime.utcnow() + timedelta(days=30)
-                    )
-                    db.add(subscription)
-                
-                # Create payment record
-                payment = Payment(
-                    user_id=user_id,
-                    subscription_id=subscription.id if subscription.id else None,
-                    amount=payment_info.get("transaction_amount"),
-                    currency="BRL",
-                    status="succeeded",
-                    payment_method="mercadopago",
-                    mercadopago_payment_id=str(payment_id),
-                    description=f"MercadoPago payment - {plan}"
-                )
-                db.add(payment)
-                
-                # Update user plan
-                user = db.query(User).filter(User.id == user_id).first()
-                if user:
-                    user.plan = plan
-                
-                db.commit()
-                logger.info("MercadoPago payment approved and plan updated", 
-                           user_id=user_id, payment_id=payment_id, plan=plan)
-                
-                return {"status": "success", "action": "plan_updated"}
-            
-            return {"status": "success", "action": "no_action_needed"}
-            
+                    raise HTTPException(status_code=400, detail="Você está em modo Trial (7 dias). O Portal de Assinaturas ficará disponível assim que você migrar para um plano pago.")
+            except Exception:
+                raise HTTPException(status_code=400, detail="Erro ao localizar sua conta no Stripe.")
+        else:
+            customer_id = subscription.stripe_customer_id
+
+        try:
+            session = stripe.billing_portal.Session.create(
+                customer=customer_id,
+                return_url=f"{os.getenv('FRONTEND_URL')}/configuracoes",
+            )
+            return {"url": session.url}
         except Exception as e:
-            logger.error("MercadoPago payment processing error", error=str(e), payment_id=payment_id)
-            raise HTTPException(status_code=500, detail=f"MP process error: {str(e)}")
+            logger.error("Portal session error", error=str(e), user_id=user.id)
+            raise HTTPException(status_code=500, detail=f"Erro ao abrir portal: {str(e)}")
 
     @staticmethod
     def cancel_subscription(user: User, db: Session) -> Dict[str, Any]:
@@ -433,13 +338,6 @@ class PaymentService:
                     cancel_at_period_end=True
                 )
                 subscription.cancel_at_period_end = True
-            
-            # Cancel on MercadoPago
-            if subscription.mercadopago_subscription_id:
-                sdk = mercadopago.SDK(MERCADOPAGO_ACCESS_TOKEN)
-                sdk.subscription().update(subscription.mercadopago_subscription_id, {
-                    "status": "cancelled"
-                })
             
             db.commit()
             

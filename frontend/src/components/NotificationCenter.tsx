@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bell, X, Check, BellRing, Info, AlertTriangle, AlertCircle, CheckCircle2, Trash2 } from "lucide-react";
+import { Bell, X, Check, BellRing, Info, AlertTriangle, AlertCircle, CheckCircle2, Trash2, Sparkles, Command } from "lucide-react";
 import { notificationsAPI } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 
@@ -68,13 +68,13 @@ export default function NotificationCenter() {
     switch (tipo.toLowerCase()) {
       case "vencimento":
       case "alerta":
-      case "warning": return <AlertTriangle className="text-amber-500" size={16} />;
+      case "warning": return <AlertTriangle className="text-amber-500" size={18} strokeWidth={2.5} />;
       case "orcamento":
       case "erro":
-      case "danger": return <AlertCircle className="text-rose-500" size={16} />;
+      case "danger": return <AlertCircle className="text-rose-500" size={18} strokeWidth={2.5} />;
       case "sucesso":
-      case "success": return <CheckCircle2 className="text-emerald-500" size={16} />;
-      default: return <Info className="text-blue-500" size={16} />;
+      case "success": return <CheckCircle2 className="text-emerald-500" size={18} strokeWidth={2.5} />;
+      default: return <Info className="text-blue-500" size={18} strokeWidth={2.5} />;
     }
   };
 
@@ -82,77 +82,89 @@ export default function NotificationCenter() {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`relative p-2.5 rounded-xl transition-all duration-200 border ${
-          isOpen ? 'bg-slate-100 dark:bg-slate-800 border-brand shadow-inner' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+        className={`relative p-3 rounded-2xl transition-all duration-300 border ${
+          isOpen ? 'bg-[var(--brand)] text-white border-transparent shadow-2xl shadow-[var(--brand)]/30 scale-110' : 'bg-white/5 dark:bg-black/20 border-white/10 hover:border-[var(--brand)]/30 text-[var(--text-secondary)] hover:shadow-lg'
         }`}
       >
-        <Bell size={20} className={unreadCount > 0 ? "animate-pulse" : ""} style={{ color: "var(--text-secondary)" }} />
+        <Bell size={20} className={unreadCount > 0 ? "animate-bounce" : ""} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-[10px] font-black text-white shadow-lg ring-2 ring-white dark:ring-slate-900">
+          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white shadow-2xl ring-2 ring-white dark:ring-black animate-in zoom-in-50 duration-500">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-[360px] animate-in slide-in-from-top-2 duration-300 z-50">
-          <div className="glass-card overflow-hidden !shadow-2xl border-brand/10">
-            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white/50 dark:bg-slate-900/50">
+        <div className="absolute right-0 mt-5 w-[420px] animate-in slide-in-from-top-4 duration-500 z-50">
+          <div className="bg-white/90 dark:bg-black/90 rounded-[40px] shadow-[0_40px_100px_rgba(0,0,0,0.4)] border border-white/10 backdrop-blur-3xl overflow-hidden">
+            {/* Header */}
+            <div className="p-8 pb-4 flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-black" style={{ color: "var(--text-primary)" }}>Central de Avisos</h3>
-                <p className="text-[10px] font-bold uppercase tracking-widest opacity-40">{unreadCount} pendentes hoje</p>
+                <h3 className="text-xl font-black italic tracking-tighter" style={{ color: "var(--text-primary)" }}>Central de Avisos</h3>
+                <div className="flex items-center gap-2">
+                   <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] animate-ping" />
+                   <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">{unreadCount ? `${unreadCount} Pendentes hoje` : 'Santuário em ordem'}</p>
+                </div>
               </div>
               <div className="flex gap-2">
                 {unreadCount > 0 && (
-                  <button onClick={markAllAsRead} className="btn-ghost !p-1.5" title="Marcar todas como lidas">
-                    <Check size={14} className="text-emerald-500" />
+                  <button onClick={markAllAsRead} className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-500 hover:scale-110 active:scale-95 transition-all shadow-xl shadow-emerald-500/5 group" title="Marcar todas como lidas">
+                    <Check size={16} strokeWidth={3} className="group-hover:rotate-12 transition-transform" />
                   </button>
                 )}
-                <button onClick={() => setIsOpen(false)} className="btn-ghost !p-1.5">
-                  <X size={14} />
+                <button onClick={() => setIsOpen(false)} className="p-3 rounded-2xl bg-white/5 dark:bg-black/20 hover:bg-rose-500/10 hover:text-rose-500 transition-all active:scale-95">
+                  <X size={16} strokeWidth={3} />
                 </button>
               </div>
             </div>
 
-            <div className="max-h-[440px] overflow-y-auto scrollbar-thin">
+            {/* List Area */}
+            <div className="max-h-[500px] overflow-y-auto scrollbar-none p-4">
               {notifications.length === 0 ? (
-                <div className="py-20 flex flex-col items-center justify-center gap-3 opacity-30">
-                  <BellRing size={40} />
-                  <p className="text-xs font-medium">Nenhum aviso por aqui.</p>
+                <div className="py-24 flex flex-col items-center justify-center gap-6 opacity-30">
+                  <div className="w-20 h-20 rounded-[32px] bg-black/5 dark:bg-white/5 flex items-center justify-center">
+                    <BellRing size={40} strokeWidth={1.5} />
+                  </div>
+                  <p className="text-sm font-black tracking-tight tracking-widest uppercase">Paz absoluta por aqui.</p>
                 </div>
               ) : (
-                <div className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                <div className="space-y-3 mb-4">
                   {notifications.map((notif) => (
                     <div
                       key={notif.id}
-                      className={`p-4 transition-all duration-150 group flex gap-4 ${!notif.lida ? 'bg-brand/[0.02] border-l-2 border-l-brand' : ''}`}
+                      className={`p-6 rounded-[32px] transition-all duration-300 group flex gap-5 border border-white/5 relative overflow-hidden ${!notif.lida ? 'bg-white/10 dark:bg-black/40 shadow-xl border-[var(--brand)]/20' : 'bg-black/5 dark:bg-white/5 opacity-50 hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10'}`}
                     >
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${!notif.lida ? 'bg-white dark:bg-slate-800 shadow-sm' : 'opacity-40'}`}>
+                      {!notif.lida && <div className="absolute top-0 left-0 w-1.5 h-full bg-[var(--brand)] shadow-[0_0_20px_var(--brand)]" />}
+                      
+                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 transition-transform duration-500 group-hover:scale-110 ${!notif.lida ? 'bg-white dark:bg-black shadow-2xl' : 'opacity-40'}`}>
                         {getIcon(notif.tipo)}
                       </div>
                       
                       <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start mb-1">
-                          <h4 className={`text-xs font-black truncate ${!notif.lida ? '' : 'opacity-50'}`} style={{ color: "var(--text-primary)" }}>
-                            {notif.titulo}
-                          </h4>
-                          <span className="text-[9px] font-bold opacity-30 whitespace-nowrap">{formatDate(notif.created_at)}</span>
+                        <div className="flex justify-between items-start mb-2">
+                           <div className="flex items-center gap-2">
+                              {!notif.lida && <Sparkles size={10} className="text-[var(--brand)] animate-pulse" />}
+                              <h4 className={`text-sm font-black tracking-tight truncate ${!notif.lida ? '' : 'opacity-60 font-bold'}`} style={{ color: "var(--text-primary)" }}>
+                                {notif.titulo}
+                              </h4>
+                           </div>
+                           <span className="text-[9px] font-black uppercase tracking-widest opacity-20 whitespace-nowrap ml-4">{formatDate(notif.created_at)}</span>
                         </div>
-                        <p className={`text-[11px] leading-relaxed line-clamp-2 ${!notif.lida ? '' : 'opacity-40'}`} style={{ color: "var(--text-secondary)" }}>
+                        <p className={`text-[12px] leading-relaxed line-clamp-2 italic ${!notif.lida ? 'font-medium' : 'opacity-40'}`} style={{ color: "var(--text-secondary)" }}>
                           {notif.mensagem}
                         </p>
                         
                         {!notif.lida && (
-                           <div className="mt-3 flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                             <button onClick={() => markAsRead(notif.id)} className="text-[10px] font-black text-emerald-500 hover:underline">Marcar como lida</button>
-                             <button onClick={() => deleteNotification(notif.id)} className="text-[10px] font-black text-rose-500 hover:underline">Excluir</button>
+                           <div className="mt-4 flex gap-6 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+                             <button onClick={() => markAsRead(notif.id)} className="text-[10px] font-black uppercase tracking-widest text-emerald-500 hover:scale-105 active:scale-95 transition-all">Aceitar</button>
+                             <button onClick={() => deleteNotification(notif.id)} className="text-[10px] font-black uppercase tracking-widest text-rose-500 hover:scale-105 active:scale-95 transition-all">Ignorar</button>
                            </div>
                         )}
                       </div>
                       
                       {notif.lida && (
-                        <button onClick={() => deleteNotification(notif.id)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-rose-500 transition-all">
-                          <Trash2 size={12} />
+                        <button onClick={() => deleteNotification(notif.id)} className="opacity-0 group-hover:opacity-100 p-3 rounded-2xl bg-rose-500/10 text-rose-500 transition-all hover:scale-110 active:scale-90 shadow-lg">
+                          <Trash2 size={16} strokeWidth={2.5} />
                         </button>
                       )}
                     </div>
@@ -161,8 +173,14 @@ export default function NotificationCenter() {
               )}
             </div>
             
-            <div className="p-3 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 text-center">
-               <button onClick={loadNotifications} className="text-[10px] font-black uppercase tracking-widest text-brand hover:opacity-70 transition-opacity">Atualizar agora</button>
+            {/* Footer */}
+            <div className="p-6 bg-black/5 dark:bg-white/5 border-t border-white/5 flex items-center justify-center gap-8">
+               <button onClick={loadNotifications} className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--brand)] hover:opacity-70 transition-opacity">Sincronizar avisos</button>
+               <div className="h-4 w-px bg-white/10" />
+               <div className="flex items-center gap-2 opacity-30">
+                  <Command size={10} />
+                  <span className="text-[9px] font-black uppercase tracking-widest">Painel de Alertas</span>
+               </div>
             </div>
           </div>
         </div>

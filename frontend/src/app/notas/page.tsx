@@ -348,17 +348,25 @@ export default function NotesPage() {
       
       {/* ── Sidebar / List View ── */}
       <div className={`flex flex-col w-full lg:w-[380px] border-r border-white/5 bg-white/50 dark:bg-black/20 backdrop-blur-xl ${isMobileView && isEditing ? 'hidden' : 'flex'}`}>
-        <div className="p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-black tracking-tighter" style={{ color: "var(--text-primary)" }}>Notas</h1>
+        <div className="p-6 space-y-4 border-b border-white/5 bg-white/30 dark:bg-black/10">
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1">
+               <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/10 mb-1">
+                  <StickyNote size={10} className="text-amber-500" />
+                  <span className="text-[8px] font-black uppercase tracking-[0.2em] text-amber-500">Memória Digital</span>
+               </div>
+               <h1 className="text-3xl font-black tracking-tighter leading-none" style={{ color: "var(--text-primary)" }}>
+                  Suas <span className="opacity-30 italic">notas.</span>
+               </h1>
+            </div>
             <button
               onClick={handleCreate}
               disabled={creating}
-              className="w-10 h-10 rounded-full bg-brand text-white flex items-center justify-center shadow-lg shadow-brand/20 active:scale-95 transition-all disabled:opacity-60"
+              className="w-12 h-12 rounded-2xl bg-amber-600 text-white flex items-center justify-center shadow-lg shadow-amber-600/20 active:scale-95 transition-all disabled:opacity-60 shrink-0"
             >
               {creating
                 ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                : <Plus size={22} strokeWidth={3} />
+                : <Plus size={24} strokeWidth={3} />
               }
             </button>
           </div>
@@ -370,7 +378,7 @@ export default function NotesPage() {
               placeholder="Buscar em todas as notas..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-white dark:bg-white/5 border border-white/10 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-brand/20 transition-all"
+              className="w-full pl-11 pr-4 py-3 bg-white dark:bg-white/5 border border-white/10 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-amber-500/20 transition-all shadow-inner"
             />
           </div>
         </div>

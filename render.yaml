@@ -1,13 +1,13 @@
 services:
   - type: web
-    name: fincontrol-api
+    name: zencash-api
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: fincontrol-db
+          name: zencash-db
           property: connectionString
       - key: SECRET_KEY
         generateValue: true
@@ -15,7 +15,7 @@ services:
         value: production
 
 databases:
-  - name: fincontrol-db
+  - name: zencash-db
     plan: free
-    databaseName: fincontrol
-    user: fincontrol_user
+    databaseName: zencash
+    user: zencash_user

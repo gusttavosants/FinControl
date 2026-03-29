@@ -169,25 +169,37 @@ export default function PlanilhasPage() {
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
 
-      {/* ── TOOLBAR ── */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8,padding:"12px 20px",flexShrink:0,borderBottom:"1px solid var(--border-subtle)",background:"var(--bg-surface)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-          <div>
-            <h1 style={{fontSize:18,fontWeight:700,color:"var(--text-primary)",lineHeight:1.2}}>Planilhas</h1>
-            <p style={{fontSize:12,color:"var(--text-muted)",marginTop:2}}>Gerencie e personalize seus dados em formato de tabela</p>
+      {/* ── Zen-Premium Header ── */}
+      <section className="relative pt-6 px-5 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+        <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 relative z-10 pb-6">
+          <div className="space-y-4">
+             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/10">
+                <FileSpreadsheet size={14} className="text-blue-500" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">Gestão Estruturada</span>
+             </div>
+             <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-none" style={{ color: "var(--text-primary)" }}>
+                Suas <span className="opacity-30 italic">planilhas.</span>
+             </h1>
+             <p className="text-lg md:text-2xl text-[var(--text-secondary)] font-medium max-w-xl">
+                Organize seus dados com precisão cirúrgica e visualize o panorama completo.
+             </p>
           </div>
-          {tab==="principal"&&<MonthSelector mes={mes} ano={ano} onChange={(m,a)=>{setMes(m);setAno(a);}}/>}
+          <div className="flex items-center gap-4 bg-white/40 dark:bg-black/20 p-2 rounded-[28px] border border-white/20 backdrop-blur-xl shadow-xl">
+            {tab==="principal"&&<MonthSelector mes={mes} ano={ano} onChange={(m,a)=>{setMes(m);setAno(a);}}/>}
+            <div className="flex items-center gap-2 pr-2">
+              {tab==="principal"&&<>
+                <button onClick={load} className="p-2 hover:bg-white/20 rounded-xl" title="Recarregar" disabled={loading}><RefreshCw size={14} className={loading?"animate-spin":""}/></button>
+                <button onClick={exportPrincipalExcel} className="bg-blue-600 text-white px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-blue-600/20">
+                  <Download size={14}/> Excel
+                </button>
+                <button onClick={addRow} className="bg-[var(--text-primary)] text-[var(--bg-surface)] px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg">
+                  <Plus size={15}/> Adicionar
+                </button>
+              </>}
+            </div>
+          </div>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-          {tab==="principal"&&<>
-            <button onClick={load} style={btn("ghost")} title="Recarregar" disabled={loading}><RefreshCw size={14} style={{animation:loading?"spin 1s linear infinite":undefined}}/></button>
-            <button onClick={exportCSV} style={btn("ghost")}><Download size={14}/><span style={{fontSize:12}}>CSV</span></button>
-            <button onClick={exportPrincipalExcel} style={btn("secondary")}><Download size={14}/><span style={{fontSize:12}}>Excel</span></button>
-            <button onClick={openCopy} disabled={saving} style={btn("secondary")}><Copy size={14}/><span style={{fontSize:13}}>Copiar mês</span></button>
-            <button onClick={addRow} style={btn("primary")}><Plus size={15}/><span style={{fontSize:13}}>Nova linha</span></button>
-          </>}
-        </div>
-      </div>
+      </section>
 
       {/* ── KPI CARDS ── */}
       {tab==="principal"&&!loading&&(
