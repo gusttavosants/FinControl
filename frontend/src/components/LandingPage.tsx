@@ -264,15 +264,22 @@ export default function LandingPage() {
                             
                             <div className="mb-14">
                                 <h3 className={`text-2xl font-black mb-10 ${plan.id === 'pro' ? 'text-[var(--brand-text)]' : 'text-[var(--brand)]'}`}>{plan.name}</h3>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-7xl font-black tracking-tighter">R$ {Math.floor(plan.price)}</span>
-                                    <div className="flex flex-col">
-                                        <span className="text-3xl font-bold opacity-30 leading-none">
-                                            ,{plan.price % 1 !== 0 ? String(Math.round((plan.price % 1) * 100)).padStart(2, '0') : '90'}
-                                        </span>
-                                        <span className="text-[11px] font-black uppercase opacity-20 tracking-tighter mt-2">/mês</span>
+                                {plan.id === 'trial' ? (
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-7xl font-black tracking-tighter">Grátis</span>
+                                        <span className="text-[11px] font-black uppercase opacity-20 tracking-widest mt-2">Durante 7 Dias</span>
                                     </div>
-                                </div>
+                                ) : (
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-7xl font-black tracking-tighter">R$ {Math.floor(plan.price)}</span>
+                                        <div className="flex flex-col">
+                                            <span className="text-3xl font-bold opacity-30 leading-none">
+                                                ,{plan.price % 1 !== 0 ? String(Math.round((plan.price % 1) * 100)).padStart(2, '0') : '90'}
+                                            </span>
+                                            <span className="text-[11px] font-black uppercase opacity-20 tracking-tighter mt-2">/mês</span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="space-y-8 mb-16 flex-1">
