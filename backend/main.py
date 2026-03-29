@@ -95,6 +95,9 @@ security = HTTPBearer(auto_error=False)
 
 app = FastAPI(title="ZenCash - API de Paz Financeira", version="1.0.0")
 
+# Auto-create tables on startup (Zen Governance)
+Base.metadata.create_all(bind=engine)
+
 # CORS Configuration
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
