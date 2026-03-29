@@ -2,7 +2,6 @@
 
 import { ArrowRight, BarChart3, Shield, Users, Zap, CheckCircle2, Star, Globe, Smartphone, Lock, ShieldCheck, HeartHandshake, HelpCircle, X, Check, Loader2, Sparkles, Layout, Menu, Leaf, Wallet, TrendingUp, PieChart, Info } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
@@ -166,21 +165,11 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            {/* Immersive Preview */}
-            <div className="relative w-full max-w-6xl animate-in fade-in zoom-in duration-1000">
-               <div className="absolute -inset-4 bg-gradient-to-b from-[var(--brand)] to-[var(--accent)] opacity-10 rounded-[58px] blur-3xl pointer-events-none" />
-               <div className="relative bg-white/40 dark:bg-black/40 p-4 rounded-[54px] border border-white/20 dark:border-white/5 shadow-2xl overflow-hidden backdrop-blur-3xl group">
-                  <div className="relative overflow-hidden rounded-[40px] shadow-2xl border border-white/5">
-                    <Image 
-                      src="/hero-landing.png" 
-                      width={1400} 
-                      height={900} 
-                      alt="ZenCash Dashboard Preview" 
-                      className="w-full h-auto object-cover opacity-95 group-hover:opacity-100 transition-opacity duration-1000 transition-transform duration-[2000ms] group-hover:scale-[1.02]" 
-                      priority 
-                    />
-                    <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[var(--bg-base)] via-transparent to-transparent pointer-events-none" />
-                  </div>
+            {/* Immersive Experience - Focus on pure Typography and Atmosphere */}
+            <div className="pt-20 lg:pt-32 opacity-20 pointer-events-none">
+               <div className="flex flex-col items-center gap-10">
+                  <div className="w-px h-32 bg-gradient-to-b from-transparent via-[var(--brand)] to-transparent" />
+                  <Leaf size={48} className="text-[var(--brand)] blur-[1px]" />
                </div>
             </div>
           </div>

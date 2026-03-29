@@ -16,5 +16,7 @@ pytest
 pytest-asyncio
 pytest-cov
 redis
+slowapi
 stripe
+mercadopago
 passlib
