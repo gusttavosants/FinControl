@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, TrendingUp, TrendingDown, BarChart3, Settings,
   Wallet, LogOut, ChevronsLeft, Target, Briefcase, Table, StickyNote, Shield,
-  User, ChevronRight, Menu, HelpCircle,
+  User, ChevronRight, Menu, HelpCircle, Leaf,
 } from "lucide-react";
 import { authAPI } from "@/lib/api";
 import { useState, useEffect } from "react";
@@ -40,16 +40,16 @@ const NAV_GROUPS = [
 ];
 
 const ICON_COLORS: Record<string, string> = {
-  "/":              "#10b981",
-  "/receitas":      "#10b981",
-  "/despesas":      "#ef4444",
-  "/investimentos": "#3b82f6",
-  "/planejamento":  "#818cf8",
-  "/relatorios":    "#f59e0b",
-  "/planilhas":     "#06b6d4",
+  "/":              "#81A18B", // Sage
+  "/receitas":      "#81A18B",
+  "/despesas":      "#E2725B", // Terracotta-ish for alert
+  "/investimentos": "#2D4A3E", // Deep Forest
+  "/planejamento":  "#A3B18A", // Moss
+  "/relatorios":    "#588157",
+  "/planilhas":     "#3A5A40",
   "/configuracoes": "#9ca3af",
   "/admin":         "#f97316",
-  "/suporte":       "#818cf8",
+  "/suporte":       "#81A18B",
 };
 
 interface SidebarProps { 
@@ -101,7 +101,7 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
       {mobileOpen && <div className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-30" onClick={() => setMobileOpen(false)} />}
 
       <aside
-        className={`fixed top-0 left-0 h-full z-40 overflow-hidden flex flex-col
+        className={`fixed top-0 left-0 h-full z-40 flex flex-col
           ${mobileOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 transition-all duration-300`}
         style={{
           width: collapsed ? "4.5rem" : "15.5rem",
@@ -110,18 +110,18 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
           borderRight: "1px solid var(--sidebar-border)",
         }}>
 
-        <div className="flex items-center gap-3 px-4 py-8 mb-4 relative transition-all duration-500 flex-shrink-0">
-          <div className="flex items-center gap-3">
-             <div className={`w-10 h-10 rounded-2xl bg-brand flex items-center justify-center text-white shadow-lg shadow-brand/20 flex-shrink-0 transition-transform duration-500 ${collapsed ? "rotate-[360deg]" : ""}`}>
-                <Wallet size={20} />
+        <div className={`flex items-center gap-3 mb-6 relative transition-all duration-500 flex-shrink-0 border-b border-white/5 mx-2 ${collapsed ? "px-0 justify-center py-10" : "pl-4 pr-10 py-10"}`}>
+          <div className="flex items-center gap-4">
+             <div className={`w-11 h-11 rounded-[22px] bg-[var(--brand)] flex items-center justify-center text-white shadow-2xl shadow-[var(--brand)]/30 flex-shrink-0 transition-all duration-700 ${collapsed ? "rotate-[360deg] scale-90" : ""}`}>
+                <Leaf size={22} strokeWidth={2.5} />
              </div>
-             <span className={`text-xl font-black uppercase tracking-wider text-brand transition-all duration-300 overflow-hidden whitespace-nowrap ${collapsed ? "w-0 opacity-0 ml-0" : "w-auto opacity-100 ml-3"}`}>
-               FinControl
+             <span className={`text-2xl font-black italic tracking-tighter text-white transition-all duration-500 whitespace-nowrap pr-2 ${collapsed ? "w-0 opacity-0 ml-0 overflow-hidden" : "w-auto opacity-100 ml-1 overflow-visible"}`}>
+               ZenCash
              </span>
           </div>
 
           <button onClick={() => setCollapsed(!collapsed)}
-            className={`hidden lg:flex absolute -right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl text-slate-400 hover:text-brand hover:scale-110 active:scale-95 transition-all z-50`}
+            className={`hidden lg:flex absolute top-1/2 -translate-y-1/2 p-2 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-2xl text-white/40 hover:text-white hover:scale-110 active:scale-95 transition-all z-50 ${collapsed ? "-right-4" : "-right-3"}`}
           >
             <ChevronsLeft size={16} className={`transition-transform duration-500 ${collapsed ? "rotate-180" : ""}`} />
           </button>

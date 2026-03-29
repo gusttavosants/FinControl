@@ -1,4 +1,4 @@
-# FinControl - Controle Financeiro Pessoal
+# ZenCash - Controle Financeiro Pessoal
 
 Plataforma web completa para controle financeiro pessoal, desenvolvida com **Python (FastAPI)** no backend e **Next.js (React)** no frontend. O sistema permite gerenciar receitas, despesas, metas financeiras e orcamentos, com suporte a contas compartilhadas entre dois usuarios (plano casal), parcelamento automatico de despesas, notificacoes inteligentes e um agente de IA integrado via chat.
 
@@ -122,8 +122,8 @@ Plataforma web completa para controle financeiro pessoal, desenvolvida com **Pyt
 ### 1. Clonar o repositorio
 
 ```bash
-git clone https://github.com/gusttavosants/FinControl.git
-cd FinControl
+git clone https://github.com/gusttavosants/ZenCash.git
+cd ZenCash
 ```
 
 ### 2. Configurar e iniciar o backend
@@ -159,7 +159,7 @@ O frontend estara disponivel em `http://localhost:3000`. As requisicoes para `/a
 ## Estrutura do Projeto
 
 ```
-FinControl/
+ZenCash/
 ├── backend/
 │   ├── main.py                      # Aplicacao FastAPI, rotas e logica de negocios
 │   ├── models.py                    # Modelos SQLAlchemy (User, Receita, Despesa, etc.)
@@ -371,7 +371,7 @@ O backend utiliza as seguintes configuracoes (definidas em `main.py`):
 
 | Variavel                   | Valor Padrao                                 | Descricao                         |
 | -------------------------- | -------------------------------------------- | --------------------------------- |
-| `SECRET_KEY`               | `fincontrol-secret-key-change-in-production` | Chave secreta para assinatura JWT |
+| `SECRET_KEY`               | `zencash-secret-key-change-in-production` | Chave secreta para assinatura JWT |
 | `ALGORITHM`                | `HS256`                                      | Algoritmo de assinatura JWT       |
 | `ACCESS_TOKEN_EXPIRE_DAYS` | `30`                                         | Validade do token em dias         |
 | `DATABASE_URL`             | `sqlite:///<backend_dir>/financial.db`       | URL de conexao com o banco        |

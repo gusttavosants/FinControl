@@ -70,11 +70,14 @@ from schemas import (
 import bcrypt
 from jose import JWTError, jwt
 from core.rbac import require_admin, get_role_permissions, ROLES, log_audit
+from services.plan_service import PlanService
 from fastapi import Header
 
-SECRET_KEY = os.environ.get("JWT_SECRET", "fincontrol-secret-key-change-in-production")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_DAYS = 30
+from core.config import settings
+SECRET_KEY = settings.JWT_SECRET
+ALGORITHM = settings.JWT_ALGORITHM
+ACCESS_TOKEN_EXPIRE_DAYS = settings.ACCESS_TOKEN_EXPIRE_DAYS
+from core.security import require_user, get_current_user
 
 
 # Funções de hash/verify com bcrypt puro
@@ -90,44 +93,34 @@ def verify_senha(senha: str, hash: str) -> bool:
 
 security = HTTPBearer(auto_error=False)
 
-app = FastAPI(title="Controle Financeiro Pessoal", version="1.0.0")
+app = FastAPI(title="ZenCash - API de Paz Financeira", version="1.0.0")
 
 # CORS Configuration
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
-ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://0.0.0.0:3000",
-    "http://[::1]:3000",
-    "https://fin-control.vercel.app",
-    "https://fin-control-fawn.vercel.app",
-    "https://creative-cranachan-b54dcf.netlify.app",
-]
 
-# Add any additional origins from environment variable
-env_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
-ALLOWED_ORIGINS.extend([o.strip() for o in env_origins if o.strip()])
-
-# More permissive for local development to avoid CORS headaches
+# Permissive for local development to avoid CORS headaches
 if ENVIRONMENT == "development":
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=False, # Must be False if using "*"
-        allow_methods=["*"],
-        allow_headers=["*"],
-        expose_headers=["*"],
-    )
+    ALLOWED_ORIGINS = ["*"]
 else:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=ALLOWED_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-        expose_headers=["*"],
-        max_age=3600,
-    )
+    ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://fin-control.vercel.app",
+        "https://fin-control-fawn.vercel.app",
+        "https://creative-cranachan-b54dcf.netlify.app",
+    ]
+    env_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+    ALLOWED_ORIGINS.extend([o.strip() for o in env_origins if o.strip()])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
+)
 
 # Include modular routes from the routes/ directory
 from routes import api_router
@@ -244,34 +237,7 @@ def create_access_token(user_id: int) -> str:
     )
 
 
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db),
-) -> Optional[User]:
-    if not credentials:
-        return None
-    try:
-        payload = jwt.decode(
-            credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM]
-        )
-        user_id = int(payload.get("sub"))
-    except (JWTError, ValueError, TypeError):
-        return None
-    return db.query(User).filter(User.id == user_id).first()
-
-
-async def require_user(request: Request, user: Optional[User] = Depends(get_current_user)) -> User:
-    if not user:
-        raise HTTPException(status_code=401, detail="Não autorizado. Faça login.")
-    
-    # Trial Mode: Only permit GET/HEAD/OPTIONS requests (Read-Only)
-    if user.role == "trial" and request.method not in ["GET", "HEAD", "OPTIONS"]:
-        raise HTTPException(
-            status_code=403, 
-            detail="Modo de demonstração: Você não tem permissão para realizar alterações."
-        )
-        
-    return user
+# Redundant get_current_user and require_user removed to use core.security
 
 
 @app.put("/api/users/me/tour")
@@ -1821,6 +1787,15 @@ def criar_meta(
     db: Session = Depends(get_db),
     shared: bool = Depends(get_shared_mode),
 ):
+    # Verificação de limites baseada no PlanService
+    is_allowed, count = PlanService.check_limit(user, db, "goals")
+    
+    if not is_allowed:
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Limite de Metas atingido para o seu plano ({user.plan.upper()}). Remova metas antigas ou faça um upgrade."
+        )
+
     db_meta = Meta(**meta.model_dump(), user_id=user.id)
     db.add(db_meta)
     db.commit()
@@ -3063,7 +3038,17 @@ def criar_investimento(
     data: InvestimentoCreate,
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
+    shared: bool = Depends(get_shared_mode),
 ):
+    # Verificação de limites baseada no PlanService
+    is_allowed, count = PlanService.check_limit(user, db, "investments")
+    
+    if not is_allowed:
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Limite de Ativos atingido para o seu plano ({user.plan.upper()}). Remova ativos antigos ou faça um upgrade."
+        )
+
     inv = Investimento(
         user_id=user.id,
         ticker=data.ticker.upper().strip(),

@@ -106,17 +106,29 @@ export default function ReceitasPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="page-title">Receitas</h1>
-          <p className="page-subtitle">Gerencie suas fontes de renda</p>
+      {/* ── Zen-Premium Header ── */}
+      <section className="relative pt-6">
+        <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 relative z-10">
+          <div className="space-y-4">
+             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/10">
+                <TrendingUp size={14} className="text-emerald-500" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500">Fluxo de Entrada</span>
+             </div>
+             <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-none" style={{ color: "var(--text-primary)" }}>
+                Suas <span className="opacity-30 italic">receitas.</span>
+             </h1>
+             <p className="text-lg md:text-2xl text-[var(--text-secondary)] font-medium max-w-xl">
+                Cultive sua abundância e visualize o crescimento do seu patrimônio.
+             </p>
+          </div>
+          <div className="flex items-center gap-4 bg-white/40 dark:bg-black/20 p-2 rounded-[28px] border border-white/20 backdrop-blur-xl shadow-xl">
+            <MonthSelector mes={mes} ano={ano} onChange={(m, a) => { setMes(m); setAno(a); }} />
+            <button onClick={openCreate} className="bg-emerald-600 text-white px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-emerald-600/20">
+              <Plus size={16} /> Nova Receita
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <MonthSelector mes={mes} ano={ano} onChange={(m, a) => { setMes(m); setAno(a); }} />
-          <button onClick={openCreate} className="btn-primary"><Plus size={15} /> Nova Receita</button>
-        </div>
-      </div>
+      </section>
 
       {/* KPI + Category Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 stagger-children">

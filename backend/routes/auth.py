@@ -30,18 +30,13 @@ def register(data: UserRegister, db: Session = Depends(get_db)):
         return {
             "access_token": token,
             "token_type": "bearer",
-            "user": {
-                "id": user.id,
-                "nome": user.nome,
-                "email": user.email,
-                "plan": user.plan,
-            }
+            "user": user
         }
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Registration failed", error=str(e))
-        raise HTTPException(status_code=500, detail="Erro ao registrar usuário")
+        logger.error(f"Registration failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao registrar usuário: {str(e)}")
 
 @router.post("/login", response_model=TokenResponse)
 def login(data: UserLogin, db: Session = Depends(get_db)):
@@ -95,7 +90,7 @@ def get_current_user_info(user: User = Depends(require_user)):
 @router.post("/demo", response_model=TokenResponse)
 def demo_login(db: Session = Depends(get_db)):
     """Access application in trial mode (read-only)"""
-    demo_email = "demo@fincontrol.com"
+    demo_email = "demo@zencash.com"
     demo_user = db.query(User).filter(User.email == demo_email).first()
     
     if not demo_user:
@@ -103,8 +98,9 @@ def demo_login(db: Session = Depends(get_db)):
             nome="Visitante (Demo)",
             email=demo_email,
             senha_hash="demo-mode-restricted", # No real password login for this
-            plan="free",
-            role="trial",
+            plan="trial",
+            trial_until=datetime.utcnow() + timedelta(days=365*10), # Demo perene
+            role="user",
             is_active=True
         )
         db.add(demo_user)

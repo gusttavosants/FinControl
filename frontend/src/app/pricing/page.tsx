@@ -60,25 +60,50 @@ export default function PricingPage() {
   };
 
   const handleCheckout = async (planId: string) => {
-    if (planId === "free" && !localStorage.getItem("token")) {
-        router.push("/register?plan=free");
-        return;
+    if (planId === "free") {
+      router.push("/register?plan=free");
+      return;
     }
     
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push(`/register?plan=${planId}`);
+      return;
+    }
+
     setCheckoutLoading(planId);
     
-    // Simulating a delay
-    await new Promise(r => setTimeout(r, 800));
+    try {
+      const response = await fetch(`${API_URL}/api/payment/checkout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          plan: planId,
+          payment_method: "stripe"
+        })
+      });
 
-    const userJson = localStorage.getItem("user");
-    const user = userJson ? JSON.parse(userJson) : null;
-    
-    const whatsappNumber = "5512935854861";
-    const text = encodeURIComponent(
-      `🔥 *QUERO ATIVAR MEU ACESSO PREMIUM*\n\nPlano: *${planId.toUpperCase()}*\nUsuário: ${user?.nome || "Novo Usuário"}\nEmail: ${user?.email || "Pendente"}\n\nPor favor, me envie as instruções de pagamento para ativação imediata.`
-    );
-    window.open(`https://wa.me/${whatsappNumber}?text=${text}`, "_blank");
-    setCheckoutLoading(null);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || "Falha ao iniciar checkout");
+      }
+
+      const data = await response.json();
+      
+      if (data.checkout_url) {
+        window.location.href = data.checkout_url;
+      } else {
+        throw new Error("URL de checkout não recebida");
+      }
+    } catch (err: any) {
+      console.error("Checkout error:", err);
+      alert(`Erro: ${err.message}`);
+    } finally {
+      setCheckoutLoading(null);
+    }
   };
 
   if (loading) return (

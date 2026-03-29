@@ -2,27 +2,28 @@ import os
 from typing import List
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 class Settings:
     # App
-    APP_NAME: str = "FinControl"
+    APP_NAME: str = "ZenCash"
     VERSION: str = "2.0.0"
     DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
     
     # Security
-    JWT_SECRET: str = os.getenv("JWT_SECRET", "fincontrol-secret-key-change-in-production")
+    JWT_SECRET: str = os.getenv("JWT_SECRET", "zencash-serenity-key-2026")
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_DAYS: int = 30
     
     # CORS
     ALLOWED_ORIGINS: List[str] = []
-    if os.getenv("ALLOWED_ORIGINS"):
-        ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS").split(",")
+    origins_env = os.getenv("ALLOWED_ORIGINS")
+    if origins_env:
+        ALLOWED_ORIGINS = origins_env.split(",")
     ALLOWED_ORIGINS += [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://fin-control-peach.vercel.app",
+        "https://zencash-peach.vercel.app",
     ]
     
     # Database

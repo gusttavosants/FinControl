@@ -47,16 +47,18 @@ async def require_user(
     request: Request,
     user: Optional[User] = Depends(get_current_user)
 ) -> User:
-    """Require authenticated user and handle trial/demo mode (read-only)"""
+    """Require authenticated user and handle trial expiration (read-only if expired)"""
     if not user:
         raise HTTPException(status_code=401, detail="Não autorizado. Faça login.")
     
-    # Trial Mode: Only permit GET/HEAD/OPTIONS requests (Read-Only)
-    if user.role == "trial" and request.method not in ["GET", "HEAD", "OPTIONS"]:
-        raise HTTPException(
-            status_code=403, 
-            detail="Modo de demonstração: Você não tem permissão para realizar alterações."
-        )
+    # Trial Expiration Logic: All write operations (POST, PUT, DELETE) blocked if trial expired
+    if user.plan == "trial" and user.trial_until:
+        if datetime.utcnow() > user.trial_until:
+             if request.method not in ["GET", "HEAD", "OPTIONS"]:
+                 raise HTTPException(
+                     status_code=402, # Payment Required
+                     detail="Seu período de trial de 7 dias expirou. Santuário em modo leitura. Assine um plano para liberar o controle total."
+                 )
         
     return user
 

@@ -128,7 +128,7 @@ export default function AdminDashboard() {
         <div>
           <div className="flex items-center gap-2 text-brand mb-1">
              <Shield size={16} />
-             <span className="text-[10px] font-black uppercase tracking-widest">FinControl OS v1.0</span>
+             <span className="text-[10px] font-black uppercase tracking-widest">ZenCash OS v1.0</span>
           </div>
           <h1 className="text-4xl font-black" style={{ color: "var(--text-primary)" }}>Painel de Controle</h1>
         </div>

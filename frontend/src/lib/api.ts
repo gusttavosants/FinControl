@@ -28,7 +28,7 @@ async function fetchAPI(endpoint: string, options?: RequestInit & { noRedirect?:
       const rawPath = window.location.pathname.replace(/\\/g, "/");
       const path = rawPath.length > 1 && rawPath.endsWith("/") ? rawPath.slice(0, -1) : (rawPath || "/");
       
-      const PUBLIC_ROUTES = ["/", "/login", "/register", "/pricing"];
+      const PUBLIC_ROUTES = ["/", "/login", "/register"];
       const isPublicPath = PUBLIC_ROUTES.includes(path);
       
       console.log(`[PATH] Current Path: ${path} | Public: ${isPublicPath} | noRedirect: ${!!options?.noRedirect}`);
@@ -325,6 +325,7 @@ export const paymentAPI = {
     }),
   getSubscription: () => fetchAPI("/payment/subscription"),
   getHistory: () => fetchAPI("/payment/payments/history"),
+  getPortal: () => fetchAPI("/payment/portal"),
   cancelSubscription: (reason?: string) =>
     fetchAPI("/payment/subscription/cancel", {
       method: "POST",

@@ -116,14 +116,26 @@ export default function PlanejamentoPage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="page-title text-gradient">Planejamento</h1>
-          <p className="page-subtitle">Gerencie seus limites e objetivos de longo prazo</p>
+      {/* ── Zen-Premium Header ── */}
+      <section className="relative pt-6">
+        <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 relative z-10">
+          <div className="space-y-4">
+             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/10">
+                <Target size={14} className="text-amber-500" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500">Estratégia & Metas</span>
+             </div>
+             <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-none" style={{ color: "var(--text-primary)" }}>
+                Seu <span className="opacity-30 italic">planejamento.</span>
+             </h1>
+             <p className="text-lg md:text-2xl text-[var(--text-secondary)] font-medium max-w-xl">
+                Trace sua rota para a liberdade e antecipe o futuro com clareza matemática.
+             </p>
+          </div>
+          <div className="flex items-center gap-4 bg-white/40 dark:bg-black/20 p-2 rounded-[28px] border border-white/20 backdrop-blur-xl shadow-xl">
+            <MonthSelector mes={mes} ano={ano} onChange={(m, a) => { setMes(m); setAno(a); }} />
+          </div>
         </div>
-        <MonthSelector mes={mes} ano={ano} onChange={(m, a) => { setMes(m); setAno(a); }} />
-      </div>
+      </section>
 
       {loading ? (
         <div className="flex flex-col items-center justify-center h-96 gap-4">
