@@ -105,9 +105,8 @@ else:
     ALLOWED_ORIGINS = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://fin-control.vercel.app",
-        "https://fin-control-fawn.vercel.app",
-        "https://creative-cranachan-b54dcf.netlify.app",
+        "https://zeencash.vercel.app",
+        "https://fincontrol-mgrk.onrender.com",
     ]
     env_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
     ALLOWED_ORIGINS.extend([o.strip() for o in env_origins if o.strip()])
