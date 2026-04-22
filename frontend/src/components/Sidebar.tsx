@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, TrendingUp, TrendingDown, BarChart3, Settings,
   Wallet, LogOut, ChevronsLeft, Target, Briefcase, Table, StickyNote, Shield,
-  User, ChevronRight, Menu, HelpCircle, Leaf,
+  User, ChevronRight, Menu, HelpCircle, Leaf, Bot,
 } from "lucide-react";
 import { authAPI } from "@/lib/api";
 import { useState, useEffect } from "react";
@@ -15,6 +15,7 @@ const NAV_GROUPS = [
     label: "Principal",
     items: [
       { href: "/",            label: "Dashboard",     icon: LayoutDashboard },
+      { href: "/chat",        label: "ZenBot IA",      icon: Bot },
       { href: "/receitas",    label: "Receitas",       icon: TrendingUp },
       { href: "/despesas",    label: "Despesas",       icon: TrendingDown },
       { href: "/investimentos",label: "Investimentos", icon: Briefcase },
@@ -41,6 +42,7 @@ const NAV_GROUPS = [
 
 const ICON_COLORS: Record<string, string> = {
   "/":              "#81A18B", // Sage
+  "/chat":          "#10B981", // Emerald Zen
   "/receitas":      "#81A18B",
   "/despesas":      "#E2725B", // Terracotta-ish for alert
   "/investimentos": "#2D4A3E", // Deep Forest

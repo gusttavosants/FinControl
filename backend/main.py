@@ -78,6 +78,7 @@ SECRET_KEY = settings.JWT_SECRET
 ALGORITHM = settings.JWT_ALGORITHM
 ACCESS_TOKEN_EXPIRE_DAYS = settings.ACCESS_TOKEN_EXPIRE_DAYS
 from core.security import require_user, get_current_user
+from agent import process_recurring_expenses
 
 
 # Funções de hash/verify com bcrypt puro
@@ -109,7 +110,7 @@ else:
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "https://zeencash.vercel.app",
-        "https://fincontrol-mgrk.onrender.com",
+        "https://fincontrol-cqxq.onrender.com",
     ]
     env_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
     ALLOWED_ORIGINS.extend([o.strip() for o in env_origins if o.strip()])
@@ -164,6 +165,13 @@ def health_check():
         }
     except Exception as e:
         return {"status": "error", "database": "disconnected", "error": str(e)}
+
+
+@app.get("/api/cron/keepalive")
+def cron_keepalive():
+    """Endpoint specifically for cron-jobs to hit to keep the server awake"""
+    return {"status": "alive", "timestamp": str(datetime.utcnow())}
+
 
 
 @app.get("/api/debug/db")
@@ -2662,40 +2670,7 @@ async def import_execute(
     }
 
 
-# ==================== CHAT AI AGENT ====================
-from agent import process_recurring_expenses, chat_with_agent, import_spreadsheet
-
-
-@app.post("/api/chat", response_model=ChatResponse)
-def chat_endpoint(req: ChatRequest, db: Session = Depends(get_db)):
-    history = [{"role": m.role, "content": m.content} for m in req.history]
-    result = chat_with_agent(req.message, history, db)
-    return ChatResponse(
-        reply=result["reply"],
-        actions=[{"type": a["type"], "data": a.get("data")} for a in result["actions"]],
-    )
-
-
-@app.post("/api/chat/upload", response_model=ChatResponse)
-async def chat_upload_endpoint(
-    file: UploadFile = File(...), db: Session = Depends(get_db)
-):
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="Nenhum arquivo enviado")
-
-    allowed = (".xlsx", ".xls", ".csv")
-    if not any(file.filename.lower().endswith(ext) for ext in allowed):
-        return ChatResponse(
-            reply="❌ Formato não suportado. Envie um arquivo **.xlsx**, **.xls** ou **.csv**.",
-            actions=[],
-        )
-
-    contents = await file.read()
-    result = import_spreadsheet(contents, file.filename, db)
-    return ChatResponse(
-        reply=result["reply"],
-        actions=[{"type": a["type"], "data": a.get("data")} for a in result["actions"]],
-    )
+# Recurring expenses handled via agent.py import above
 
 
 @app.post("/api/recurring/process")

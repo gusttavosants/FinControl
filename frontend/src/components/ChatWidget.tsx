@@ -200,7 +200,7 @@ export default function ChatWidget() {
             className="flex items-center justify-between px-5 py-4"
             style={{
               borderBottom: "1px solid rgba(255,255,255,0.08)",
-              background: "linear-gradient(135deg, #3366ff, #8b5cf6)",
+              background: "var(--brand)",
             }}
           >
             <div className="flex items-center gap-3">
@@ -309,8 +309,7 @@ export default function ChatWidget() {
                   style={
                     msg.role === "user"
                       ? {
-                          background:
-                            "linear-gradient(135deg, #3366ff, #8b5cf6)",
+                          background: "var(--brand)",
                         }
                       : {
                           background: "var(--bg-elevated)",
@@ -417,7 +416,7 @@ export default function ChatWidget() {
                 disabled={!input.trim() || loading}
                 className="p-1.5 rounded-lg text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
                 style={{
-                  background: "linear-gradient(135deg, #3366ff, #8b5cf6)",
+                  background: "var(--brand)",
                 }}
               >
                 <Send size={14} />
@@ -444,7 +443,7 @@ export default function ChatWidget() {
         style={
           isOpen
             ? undefined
-            : { background: "linear-gradient(135deg, #3366ff, #8b5cf6)" }
+            : { background: "var(--brand)" }
         }
       >
         {isOpen ? (

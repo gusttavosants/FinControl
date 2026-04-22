@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import date, datetime
 
 
@@ -219,20 +219,40 @@ class ChatMessage(BaseModel):
     role: str
     content: str
 
-
 class ChatRequest(BaseModel):
     message: str
+    session_id: Optional[int] = None
     history: List[ChatMessage] = []
-
 
 class ChatAction(BaseModel):
     type: str
     data: Optional[dict] = None
 
-
 class ChatResponse(BaseModel):
     reply: str
+    session_id: Optional[int] = None
     actions: List[ChatAction] = []
+
+class ChatMessageResponse(BaseModel):
+    id: int
+    role: str
+    content: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class ChatSessionResponse(BaseModel):
+    id: int
+    title: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class ChatSessionDetailResponse(ChatSessionResponse):
+    messages: List[ChatMessageResponse] = []
 
 
 # --- SharedAccount Schemas ---

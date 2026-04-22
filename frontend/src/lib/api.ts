@@ -121,10 +121,13 @@ export const adminAPI = {
 
 // Chat
 export const chatAPI = {
-  send: (message: string, history: { role: string; content: string }[]) =>
+  getSessions: () => fetchAPI("/chat/sessions"),
+  getSession: (id: number) => fetchAPI(`/chat/sessions/${id}`),
+  deleteSession: (id: number) => fetchAPI(`/chat/sessions/${id}`, { method: "DELETE" }),
+  send: (message: string, history: { role: string; content: string }[], session_id?: number) =>
     fetchAPI("/chat", {
       method: "POST",
-      body: JSON.stringify({ message, history }),
+      body: JSON.stringify({ message, history, session_id }),
     }),
   upload: async (file: File) => {
     const formData = new FormData();

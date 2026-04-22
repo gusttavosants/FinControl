@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "./Sidebar";
 import CalculatorWidget from "./CalculatorWidget";
+import ChatWidget from "./ChatWidget";
 import GlobalSearch from "./GlobalSearch";
 import NotificationCenter from "./NotificationCenter";
 import { Menu, Users, User, ArrowLeftRight, AlertTriangle, ShieldCheck, LogOut, Leaf } from "lucide-react";
@@ -194,7 +195,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <button onClick={() => setMobileOpen(!mobileOpen)}
         className="lg:hidden fixed top-4 left-4 z-50 w-11 h-11 rounded-xl flex items-center justify-center shadow-xl backdrop-blur-md border border-white/10 transition-all active:scale-90"
-        style={{ background: "rgba(51, 102, 255, 0.9)", color: "#fff" }}>
+        style={{ background: "var(--brand)", color: "#111" }}>
         {mobileOpen ? <LogOut size={20} className="rotate-180" /> : <Menu size={22} />}
       </button>
 
@@ -226,7 +227,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </header>
 
         <div
-          className="flex-1 p-4 lg:px-8 lg:py-6 w-full overflow-x-hidden min-h-screen"
+          className="flex-1 p-4 lg:px-8 lg:py-6 w-full overflow-x-hidden"
         >
           <div className="lg:hidden flex items-center justify-between mb-8 pt-4">
              <div className="flex items-center gap-2">
@@ -245,6 +246,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </main>
       <CalculatorWidget isOpen={calculatorOpen} setIsOpen={setCalculatorOpen} />
+      <ChatWidget />
     </div>
   );
 }
