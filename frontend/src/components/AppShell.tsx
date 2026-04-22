@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "./Sidebar";
 import CalculatorWidget from "./CalculatorWidget";
-import ChatWidget from "./ChatWidget";
+
 import GlobalSearch from "./GlobalSearch";
 import NotificationCenter from "./NotificationCenter";
 import { Menu, Users, User, ArrowLeftRight, AlertTriangle, ShieldCheck, LogOut, Leaf } from "lucide-react";
@@ -246,7 +246,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </main>
       <CalculatorWidget isOpen={calculatorOpen} setIsOpen={setCalculatorOpen} />
-      <ChatWidget />
+
     </div>
   );
 }

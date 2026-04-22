@@ -93,6 +93,96 @@ class AIService:
                         "required": ["mes", "ano"]
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "listar_despesas",
+                    "description": "Lista todas as despesas de um determinado mês e ano.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "mes": {"type": "integer"},
+                            "ano": {"type": "integer"},
+                            "apenas_pendentes": {"type": "boolean", "description": "Se true, lista apenas despesas não pagas."}
+                        },
+                        "required": ["mes", "ano"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "atualizar_status_pagamento",
+                    "description": "Marca uma ou todas as despesas de um mês como pagas ou pendentes.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "mes": {"type": "integer"},
+                            "ano": {"type": "integer"},
+                            "pago": {"type": "boolean"},
+                            "despesa_id": {"type": "integer", "description": "ID opcional para atualizar apenas uma despesa específica. Se omitido, atualiza TODAS do mês."}
+                        },
+                        "required": ["mes", "ano", "pago"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "listar_receitas",
+                    "description": "Lista todas as receitas (entradas) de um determinado mês e ano.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "mes": {"type": "integer"},
+                            "ano": {"type": "integer"}
+                        },
+                        "required": ["mes", "ano"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "listar_metas",
+                    "description": "Lista todas as metas financeiras do usuário e seu progresso.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "atualizar_meta",
+                    "description": "Atualiza o progresso de uma meta financeira (valor atual ou status de concluída).",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "integer"},
+                            "valor_atual": {"type": "number"},
+                            "concluida": {"type": "boolean"}
+                        },
+                        "required": ["id"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "deletar_registro",
+                    "description": "Exclui permanentemente uma receita ou despesa pelo ID.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "tipo": {"type": "string", "enum": ["receita", "despesa"]},
+                            "id": {"type": "integer"}
+                        },
+                        "required": ["tipo", "id"]
+                    }
+                }
             }
         ]
 
@@ -106,6 +196,18 @@ class AIService:
             return self.criar_despesa(**args)
         elif name == "obter_resumo_financeiro":
             return self.obter_resumo_financeiro(**args)
+        elif name == "listar_despesas":
+            return self.listar_despesas(**args)
+        elif name == "atualizar_status_pagamento":
+            return self.atualizar_status_pagamento(**args)
+        elif name == "listar_receitas":
+            return self.listar_receitas(**args)
+        elif name == "listar_metas":
+            return self.listar_metas()
+        elif name == "atualizar_meta":
+            return self.atualizar_meta(**args)
+        elif name == "deletar_registro":
+            return self.deletar_registro(**args)
         return {"error": f"Tool {name} not found"}
 
     def criar_receita(self, descricao: str, categoria: str, valor: float, data: str, observacoes: Optional[str] = None):
@@ -128,6 +230,104 @@ class AIService:
         r = self.db.query(func.sum(Receita.valor)).filter(Receita.user_id == self.user_id, extract('month', Receita.data) == mes, extract('year', Receita.data) == ano).scalar() or 0
         d = self.db.query(func.sum(Despesa.valor)).filter(Despesa.user_id == self.user_id, extract('month', Despesa.data_vencimento) == mes, extract('year', Despesa.data_vencimento) == ano).scalar() or 0
         return {"total_receitas": float(r), "total_despesas": float(d), "saldo": float(r - d)}
+
+    def listar_despesas(self, mes: int, ano: int, apenas_pendentes: bool = False):
+        query = self.db.query(Despesa).filter(
+            Despesa.user_id == self.user_id, 
+            extract('month', Despesa.data_vencimento) == mes, 
+            extract('year', Despesa.data_vencimento) == ano
+        )
+        if apenas_pendentes:
+            query = query.filter(Despesa.pago == False)
+        
+        despesas = query.all()
+        return [
+            {
+                "id": d.id, 
+                "descricao": d.descricao, 
+                "valor": d.valor, 
+                "vencimento": d.data_vencimento.isoformat(),
+                "pago": d.pago
+            } for d in despesas
+        ]
+
+    def atualizar_status_pagamento(self, mes: int, ano: int, pago: bool, despesa_id: Optional[int] = None):
+        try:
+            query = self.db.query(Despesa).filter(
+                Despesa.user_id == self.user_id,
+                extract('month', Despesa.data_vencimento) == mes,
+                extract('year', Despesa.data_vencimento) == ano
+            )
+            
+            if despesa_id:
+                query = query.filter(Despesa.id == despesa_id)
+            
+            despesas = query.all()
+            count = 0
+            for d in despesas:
+                d.pago = pago
+                d.data_pagamento = date.today() if pago else None
+                count += 1
+            
+            self.db.commit()
+            action = "pagas" if pago else "pendentes"
+            return {"status": "success", "message": f"{count} despesas marcadas como {action}", "count": count}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def listar_receitas(self, mes: int, ano: int):
+        receitas = self.db.query(Receita).filter(
+            Receita.user_id == self.user_id, 
+            extract('month', Receita.data) == mes, 
+            extract('year', Receita.data) == ano
+        ).all()
+        return [
+            {
+                "id": r.id, 
+                "descricao": r.descricao, 
+                "valor": r.valor, 
+                "data": r.data.isoformat(),
+                "categoria": r.categoria
+            } for r in receitas
+        ]
+
+    def listar_metas(self):
+        from models import Meta
+        metas = self.db.query(Meta).filter(Meta.user_id == self.user_id).all()
+        return [
+            {
+                "id": m.id,
+                "descricao": m.descricao,
+                "alvo": m.valor_alvo,
+                "atual": m.valor_atual,
+                "concluida": m.concluida,
+                "prazo": m.prazo.isoformat() if m.prazo else None
+            } for m in metas
+        ]
+
+    def atualizar_meta(self, id: int, valor_atual: Optional[float] = None, concluida: Optional[bool] = None):
+        try:
+            from models import Meta
+            meta = self.db.query(Meta).filter(Meta.id == id, Meta.user_id == self.user_id).first()
+            if not meta: return {"status": "error", "message": "Meta não encontrada"}
+            
+            if valor_atual is not None: meta.valor_atual = valor_atual
+            if concluida is not None: meta.concluida = concluida
+            
+            self.db.commit()
+            return {"status": "success", "message": "Meta atualizada"}
+        except Exception as e: return {"status": "error", "message": str(e)}
+
+    def deletar_registro(self, tipo: str, id: int):
+        try:
+            model = Receita if tipo == "receita" else Despesa
+            item = self.db.query(model).filter(model.id == id, model.user_id == self.user_id).first()
+            if not item: return {"status": "error", "message": "Registro não encontrado"}
+            
+            self.db.delete(item)
+            self.db.commit()
+            return {"status": "success", "message": f"{tipo.capitalize()} excluída com sucesso"}
+        except Exception as e: return {"status": "error", "message": str(e)}
 
     # --- Chat Implementation (OpenRouter) ---
 
@@ -170,8 +370,12 @@ class AIService:
                     result = self.execute_tool(name, args)
                     
                     # Add to tracking
-                    if "receita" in name: actions.append({"type": "receita_added", "data": result})
-                    if "despesa" in name: actions.append({"type": "despesa_added", "data": result})
+                    if "criar_receita" == name: actions.append({"type": "receita_added", "data": result})
+                    if "criar_despesa" == name: actions.append({"type": "despesa_added", "data": result})
+                    if "atualizar_status_pagamento" == name: actions.append({"type": "despesa_updated", "data": result})
+                    if "atualizar_meta" == name: actions.append({"type": "meta_added", "data": result})
+                    if "deletar_registro" == name:
+                        actions.append({"type": f"{args.get('tipo', 'despesa')}_deleted", "data": result})
 
                 # Call again with tool results to get final reply
                 messages.append(choice)
@@ -200,7 +404,7 @@ class AIService:
         # Simple implementation since the primary goal is helping with OpenRouter
         model = genai.GenerativeModel(
             model_name=settings.GEMINI_MODEL,
-            tools=[self.criar_receita, self.criar_despesa, self.obter_resumo_financeiro],
+            tools=[self.criar_receita, self.criar_despesa, self.obter_resumo_financeiro, self.listar_despesas, self.atualizar_status_pagamento],
             system_instruction=self.system_instruction
         )
         gemini_history = []
@@ -214,8 +418,13 @@ class AIService:
         for part in resp.candidates[0].content.parts:
             if part.function_call:
                 name = part.function_call.name
-                if "receita" in name: actions.append({"type": "receita_added", "data": {}})
-                if "despesa" in name: actions.append({"type": "despesa_added", "data": {}})
+                if "criar_receita" == name: actions.append({"type": "receita_added", "data": {}})
+                if "criar_despesa" == name: actions.append({"type": "despesa_added", "data": {}})
+                if "atualizar_status_pagamento" == name: actions.append({"type": "despesa_updated", "data": {}})
+                if "atualizar_meta" == name: actions.append({"type": "meta_added", "data": {}})
+                if "deletar_registro" == name:
+                    tipo = part.function_call.args.get("tipo", "despesa")
+                    actions.append({"type": f"{tipo}_deleted", "data": {}})
         
         return {"reply": resp.text, "actions": actions}
 

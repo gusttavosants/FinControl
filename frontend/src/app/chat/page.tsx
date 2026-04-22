@@ -43,7 +43,15 @@ export default function ChatPage() {
   };
 
   useEffect(() => {
-    fetchSessions();
+    const initializeChat = async () => {
+      await fetchSessions();
+      
+      const savedSessionId = localStorage.getItem("zenbot_last_session");
+      if (savedSessionId) {
+        loadSession(parseInt(savedSessionId));
+      }
+    };
+    initializeChat();
   }, []);
 
   // Selecionar Sessão
@@ -53,6 +61,7 @@ export default function ChatPage() {
       const data = await chatAPI.getSession(id);
       setActiveSessionId(data.id);
       setMessages(data.messages || []);
+      localStorage.setItem("zenbot_last_session", data.id.toString());
       setIsHistoryOpen(false); // Fechar histórico ao selecionar
     } catch (e) {
       console.error(e);
@@ -64,6 +73,7 @@ export default function ChatPage() {
   const createNewChat = () => {
     setActiveSessionId(null);
     setMessages([]);
+    localStorage.removeItem("zenbot_last_session");
     setIsHistoryOpen(false);
   };
 
@@ -106,6 +116,7 @@ export default function ChatPage() {
       // Se criou nova sessão, define e recarrega
       if (!activeSessionId && res.session_id) {
         setActiveSessionId(res.session_id);
+        localStorage.setItem("zenbot_last_session", res.session_id.toString());
         fetchSessions();
       }
 
@@ -113,6 +124,22 @@ export default function ChatPage() {
         ...prev,
         { role: "assistant", content: res.reply }
       ]);
+
+      // Processar Actions da IA (Zen Architecture)
+      if (res.actions && res.actions.length > 0) {
+        res.actions.forEach((action: any) => {
+          if (
+            action.type === "receita_added" ||
+            action.type === "receita_deleted" ||
+            action.type === "despesa_added" ||
+            action.type === "despesa_deleted" ||
+            action.type === "despesa_updated" ||
+            action.type === "meta_added"
+          ) {
+            window.dispatchEvent(new CustomEvent("fincontrol:refresh"));
+          }
+        });
+      }
     } catch (err) {
       setMessages((prev) => [
         ...prev,

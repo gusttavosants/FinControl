@@ -98,7 +98,7 @@ export default function CalculatorWidget({
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-24 z-40 w-16 h-16 rounded-full text-[#111] shadow-xl hover:shadow-[var(--brand)]/20 hover:scale-110 transition-all duration-300 flex items-center justify-center border-t border-white/20"
+        className="fixed bottom-6 right-6 z-40 w-16 h-16 rounded-full text-[#111] shadow-xl hover:shadow-[var(--brand)]/20 hover:scale-110 transition-all duration-300 flex items-center justify-center border-t border-white/20"
         style={{ background: "var(--brand)" }}
         title="Calculadora"
       >
@@ -116,7 +116,7 @@ export default function CalculatorWidget({
 
           {/* Calculator Panel */}
           <div
-            className="fixed bottom-24 right-24 z-50 w-80 p-4"
+            className="fixed bottom-24 right-6 z-50 w-80 p-4"
             style={{
               background: "var(--bg-card)",
               border: "1px solid var(--border-subtle)",
