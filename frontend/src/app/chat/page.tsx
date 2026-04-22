@@ -5,7 +5,7 @@ import { chatAPI } from "@/lib/api";
 import { 
   Bot, Send, User, Sparkles, Leaf, ArrowLeft, 
   Trash2, Paperclip, MessageSquare, Zap, ShieldCheck, Plus, MessageCircle,
-  History, X
+  History, X, AlertTriangle
 } from "lucide-react";
 import Link from "next/link";
 
@@ -29,6 +29,7 @@ export default function ChatPage() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<number | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -77,16 +78,21 @@ export default function ChatPage() {
     setIsHistoryOpen(false);
   };
 
-  const deleteSession = async (id: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm("Excluir esta conversa?")) return;
+  const confirmDelete = async () => {
+    if (!sessionToDelete) return;
     try {
-      await chatAPI.deleteSession(id);
-      if (activeSessionId === id) createNewChat();
+      await chatAPI.deleteSession(sessionToDelete);
+      if (activeSessionId === sessionToDelete) createNewChat();
       fetchSessions();
+      setSessionToDelete(null);
     } catch (error) {
       console.error(error);
     }
+  };
+
+  const deleteSession = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSessionToDelete(id);
   };
 
   // Auto-scroll para baixo
@@ -351,6 +357,40 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
+      {/* Modal de Confirmação de Exclusão */}
+      {sessionToDelete && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-fade-in">
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-md" 
+            onClick={() => setSessionToDelete(null)} 
+          />
+          <div className="relative w-full max-w-sm bg-[#111] border border-white/10 rounded-[32px] p-8 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto mb-6">
+              <AlertTriangle size={32} />
+            </div>
+            
+            <h3 className="text-xl font-bold text-white text-center mb-2">Excluir Conversa?</h3>
+            <p className="text-sm text-white/40 text-center mb-8">
+              Esta ação é permanente e não poderá ser desfeita. Deseja continuar?
+            </p>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <button 
+                onClick={() => setSessionToDelete(null)}
+                className="py-4 rounded-2xl bg-white/5 text-white font-bold hover:bg-white/10 transition-all"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={confirmDelete}
+                className="py-4 rounded-2xl bg-rose-600 text-white font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-900/20"
+              >
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
