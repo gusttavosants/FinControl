@@ -39,6 +39,14 @@ class TokenResponse(BaseModel):
 
 
 # --- Admin Schemas ---
+class UserAdminCreate(BaseModel):
+    nome: str
+    email: str
+    senha: str
+    plan: str
+    role: str = "user"
+
+
 class UserAdminResponse(BaseModel):
     id: int
     nome: str

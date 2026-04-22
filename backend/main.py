@@ -66,6 +66,7 @@ from schemas import (
     NoteCreate,
     NoteUpdate,
     NoteResponse,
+    UserAdminCreate,
 )
 import bcrypt
 from jose import JWTError, jwt
@@ -526,6 +527,43 @@ CATEGORIAS_DESPESA = [
 
 
 # ==================== ADMIN ENDPOINTS ====================
+@app.post("/api/admin/users", response_model=UserResponse)
+async def admin_create_user(
+    data: UserAdminCreate,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    # Verificar se o usuário já existe
+    existing_user = db.query(User).filter(User.email == data.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="E-mail já cadastrado")
+
+    # Criar novo usuário
+    novo_usuario = User(
+        nome=data.nome,
+        email=data.email,
+        senha_hash=hash_senha(data.senha),
+        plan=data.plan,
+        role=data.role,
+        is_active=True,
+    )
+
+    db.add(novo_usuario)
+    db.commit()
+    db.refresh(novo_usuario)
+
+    log_audit(
+        db,
+        admin.id,
+        "ADMIN_CREATE_USER",
+        "user",
+        novo_usuario.id,
+        f"Admin {admin.email} criou usuário {novo_usuario.email} com plano {novo_usuario.plan}",
+    )
+
+    return novo_usuario
+
+
 @app.get("/api/admin/users", response_model=List[UserAdminResponse])
 def list_users(
     user: User = Depends(require_user),

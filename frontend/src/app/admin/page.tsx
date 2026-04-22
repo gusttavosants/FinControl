@@ -7,7 +7,7 @@ import {
   Search, UserCog, Ban, CheckCircle, Clock,
   ArrowUpRight, ArrowDownRight, Zap, Database,
   LayoutGrid, List, History, Trash2, Mail,
-  Star, ChevronRight, AlertCircle, RefreshCcw
+  Star, ChevronRight, AlertCircle, RefreshCcw, UserPlus, X, ShieldAlert
 } from "lucide-react";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, 
@@ -44,6 +44,9 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userActivity, setUserActivity] = useState<AuditLog[]>([]);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newUser, setNewUser] = useState({ nome: "", email: "", senha: "", plan: "trial", role: "user" });
+  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => { fetchAllMetrics(); }, []);
 
@@ -104,6 +107,21 @@ export default function AdminDashboard() {
        if (selectedUser?.id === userId) setSelectedUser({ ...selectedUser, plan });
     } catch (err: any) {
        alert(err.message);
+    }
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreating(true);
+    try {
+      await adminAPI.createUser(newUser);
+      setIsCreateModalOpen(false);
+      setNewUser({ nome: "", email: "", senha: "", plan: "trial", role: "user" });
+      fetchAllMetrics();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -192,10 +210,18 @@ export default function AdminDashboard() {
       {activeTab === "users" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
            <div className="lg:col-span-2 space-y-6">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30" size={18} />
-                <input className="input-field pl-12 py-4 shadow-sm" placeholder="Buscar por nome ou e-mail..."
-                  value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+              <div className="flex gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30" size={18} />
+                  <input className="input-field pl-12 py-4 shadow-sm" placeholder="Buscar por nome ou e-mail..."
+                    value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                </div>
+                <button 
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="btn-primary flex items-center justify-center gap-2 px-8 py-4 whitespace-nowrap shadow-lg shadow-brand/20"
+                >
+                  <UserPlus size={18} /> Novo Usuário
+                </button>
               </div>
 
               <div className="glass-card overflow-hidden">
@@ -323,6 +349,112 @@ export default function AdminDashboard() {
                </tbody>
             </table>
          </div>
+      )}
+
+      {/* Modal Criar Usuário */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsCreateModalOpen(false)} />
+          <div className="relative w-full max-w-lg bg-[#111] border border-white/10 rounded-[32px] p-8 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-brand/20 text-brand flex items-center justify-center">
+                  <UserPlus size={20} />
+                </div>
+                <h3 className="text-xl font-bold text-white">Novo Usuário</h3>
+              </div>
+              <button 
+                onClick={() => setIsCreateModalOpen(false)}
+                className="w-10 h-10 rounded-xl hover:bg-white/5 text-white/40 hover:text-white flex items-center justify-center transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateUser} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-[#555] mb-2 block">Nome Completo</label>
+                  <input 
+                    required
+                    className="input-field py-4" 
+                    placeholder="Ex: João Silva"
+                    value={newUser.nome}
+                    onChange={e => setNewUser({...newUser, nome: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-[#555] mb-2 block">E-mail</label>
+                  <input 
+                    required
+                    type="email"
+                    className="input-field py-4" 
+                    placeholder="joao@email.com"
+                    value={newUser.email}
+                    onChange={e => setNewUser({...newUser, email: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-[#555] mb-2 block">Senha Provisória</label>
+                <input 
+                  required
+                  type="password"
+                  className="input-field py-4" 
+                  placeholder="••••••••"
+                  value={newUser.senha}
+                  onChange={e => setNewUser({...newUser, senha: e.target.value})}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-[#555] mb-2 block">Plano de Acesso</label>
+                  <select 
+                    className="input-field py-4 bg-transparent"
+                    value={newUser.plan}
+                    onChange={e => setNewUser({...newUser, plan: e.target.value})}
+                  >
+                    <option value="trial" className="bg-[#111]">Trial (7 dias)</option>
+                    <option value="basico" className="bg-[#111]">Básico</option>
+                    <option value="pro" className="bg-[#111]">Pro</option>
+                    <option value="premium" className="bg-[#111]">Premium</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-[#555] mb-2 block">Cargo (Role)</label>
+                  <select 
+                    className="input-field py-4 bg-transparent"
+                    value={newUser.role}
+                    onChange={e => setNewUser({...newUser, role: e.target.value})}
+                  >
+                    <option value="user" className="bg-[#111]">Usuário Padrão</option>
+                    <option value="moderator" className="bg-[#111]">Moderador</option>
+                    <option value="admin" className="bg-[#111]">Administrador</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-4 flex gap-4">
+                <button 
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="flex-1 py-4 rounded-2xl bg-white/5 text-white/50 font-bold hover:bg-white/10 hover:text-white transition-all underline decoration-white/0 hover:decoration-white/20 underline-offset-4"
+                >
+                  Descartar
+                </button>
+                <button 
+                  type="submit"
+                  disabled={isCreating}
+                  className="flex-1 py-4 rounded-2xl bg-brand text-[#111] font-black hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-brand/20 disabled:opacity-50 flex items-center justify-center"
+                >
+                  {isCreating ? <Loader2 className="animate-spin" size={20} /> : "Criar Usuário"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

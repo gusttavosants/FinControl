@@ -101,6 +101,11 @@ export const authAPI = {
 // Admin
 export const adminAPI = {
   listUsers: () => fetchAPI("/admin/users"),
+  createUser: (data: any) =>
+    fetchAPI("/admin/users", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   updateRole: (userId: number, role: string) =>
     fetchAPI(`/admin/users/${userId}/role`, {
       method: "PUT",
